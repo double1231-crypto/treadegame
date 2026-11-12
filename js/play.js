@@ -11,8 +11,9 @@ const params = new URLSearchParams(location.search);
 
 // 기기마다 고유 번호(새로고침해도 같은 나라로 다시 들어감). 테스트 모드에서는 탭마다 다르게.
 // 시험 페이지에서는 한 탭 안에 학생 화면이 여러 개라서 자리 번호(seat)로 구분해요.
-const seat = pickTransport() === 'local' ? params.get('seat') : null;
-const idStore = pickTransport() === 'local' ? sessionStorage : localStorage;
+const testMode = ['local', 'fbmock'].includes(params.get('net'));
+const seat = testMode ? params.get('seat') : null;
+const idStore = testMode ? sessionStorage : localStorage;
 const pidKey = 'tradeciv-pid' + (seat ? '-' + seat : '');
 let pid = idStore.getItem(pidKey);
 if (!pid) { pid = uid(); idStore.setItem(pidKey, pid); }

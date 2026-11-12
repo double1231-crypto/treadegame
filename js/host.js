@@ -36,7 +36,7 @@ async function boot() {
     }
   }
   game = new Game(state, { onChange: scheduleSync, notify, removed: kick });
-  if (pickTransport() === 'local') window.__game = game; // 테스트 모드에서만 디버깅용
+  if (pickTransport() === 'local' || /net=fbmock/.test(location.search)) window.__game = game; // 테스트 모드에서만 디버깅용
   lastAnnounce = state.announce?.id ?? null; // 이어하기 때 지난 공지를 다시 띄우지 않게
   lastCrisis = state.crisisMsg?.id ?? null;
   lastWorld = state.worldMsg?.id ?? null;
