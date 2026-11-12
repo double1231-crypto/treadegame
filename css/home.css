@@ -1,0 +1,89 @@
+/* 첫 화면: 밤의 지구와 무역로 */
+:root {
+  --space: #03060d;
+  --ink-hi: #f4f6fb;
+  --ink-mid: #a9b3c6;
+  --ink-low: #6b768c;
+  --glow: #7fb6ff;
+  --light: #ffcf7a;
+}
+html, body { margin: 0; height: 100%; background: var(--space); color: var(--ink-hi); }
+body {
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+#world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.shade {
+  position: fixed; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(3, 6, 13, .85) 0%, rgba(3, 6, 13, .35) 45%, rgba(3, 6, 13, 0) 70%);
+}
+
+.hero {
+  position: relative; z-index: 2; min-height: 100svh; box-sizing: border-box;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 48px clamp(20px, 7vw, 110px); max-width: 760px;
+}
+.filewarn {
+  margin: 0 0 28px; padding: 16px 20px; border-radius: 16px; font-size: 17px; line-height: 1.6;
+  background: rgba(255, 207, 122, .14); color: #ffe2a8; border: 1px solid rgba(255, 207, 122, .4);
+}
+.filewarn[hidden] { display: none; }
+.kicker {
+  font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500;
+  letter-spacing: .32em; text-transform: uppercase; color: var(--ink-mid); margin: 0 0 22px;
+}
+.title {
+  font-family: 'Space Grotesk', 'Pretendard', sans-serif; font-weight: 700;
+  font-size: clamp(56px, 9vw, 112px); line-height: .98; letter-spacing: -.02em; margin: 0;
+}
+.title-ko { font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; margin: 22px 0 0; color: var(--ink-hi); }
+.desc { font-size: clamp(17px, 1.6vw, 20px); line-height: 1.7; color: var(--ink-mid); margin: 14px 0 0; max-width: 30em; word-break: keep-all; }
+.rule { width: 56px; height: 1px; background: rgba(255, 255, 255, .35); margin: 30px 0; border: 0; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 14px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 14px; text-decoration: none;
+  border-radius: 999px; padding: 18px 26px 18px 30px; min-height: 64px; box-sizing: border-box;
+  font-size: 20px; font-weight: 700; transition: transform .15s, background .15s, border-color .15s;
+}
+.pill .arr { font-family: 'Space Grotesk', sans-serif; font-size: 22px; transition: transform .15s; }
+.pill:hover .arr, .pill:focus-visible .arr { transform: translateX(4px); }
+.pill:active { transform: scale(.98); }
+.pill.primary { background: var(--ink-hi); color: #0b1220; }
+.pill.ghost {
+  background: rgba(20, 28, 44, .55); color: var(--ink-hi); border: 1px solid rgba(255, 255, 255, .22);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.pill.ghost:hover { border-color: rgba(255, 255, 255, .5); }
+.pill small { display: block; font-size: 13px; font-weight: 500; opacity: .7; margin-top: 2px; }
+.pill:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
+
+.steps {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 34px 0 0; padding: 0; list-style: none;
+  font-size: 15px; color: var(--ink-low);
+}
+.steps li::before { content: '↗'; margin-right: 6px; color: var(--ink-mid); }
+
+.testlink {
+  display: inline-block; margin-top: 26px; color: var(--ink-mid); font-size: 15px; text-decoration: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, .3); padding-bottom: 2px; align-self: flex-start;
+}
+.testlink small { display: block; font-size: 13px; color: var(--ink-low); margin-top: 2px; }
+.testlink:hover { color: var(--ink-hi); border-bottom-color: rgba(255, 255, 255, .6); }
+.foot {
+  position: fixed; z-index: 2; left: clamp(20px, 7vw, 110px); bottom: 22px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; letter-spacing: .24em; color: var(--ink-low);
+  text-transform: uppercase;
+}
+
+/* 태블릿 세로: 글은 위, 지구는 아래 */
+@media (orientation: portrait) {
+  .shade { background: linear-gradient(180deg, rgba(3, 6, 13, .9) 0%, rgba(3, 6, 13, .55) 50%, rgba(3, 6, 13, 0) 75%); }
+  .hero { justify-content: flex-start; padding-top: 12vh; }
+  .pill { flex: 1 1 260px; justify-content: space-between; }
+}
+@media (max-width: 480px) {
+  .kicker { letter-spacing: .22em; font-size: 11px; }
+  .foot { display: none; }
+}
