@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>무역 문명 게임</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+  <canvas id="world" aria-hidden="true"></canvas>
+  <div class="shade"></div>
+
+  <main class="hero">
+    <div class="filewarn" id="filewarn" hidden>
+      <b>⚠️ 파일을 바로 열면 방을 만들 수 없어요.</b><br>
+      게임 폴더의 <b>「실행하기.bat」</b>을 더블클릭하거나, GitHub Pages 주소로 열어 주세요.
+    </div>
+    <p class="kicker">Trade Civilization · 6학년 사회</p>
+    <h1 class="title">World<br>Traders</h1>
+    <p class="title-ko">무역 문명 게임</p>
+    <p class="desc">나라마다 많은 자원과 부족한 자원이 있어요.
+      서로 무역하며 우리 나라를 마을에서 제국으로 키워 보세요.</p>
+    <hr class="rule">
+    <div class="actions">
+      <a class="pill primary" id="go-play" href="play.html"><span>게임 참가하기<small>학생 · 방 번호 입력</small></span><span class="arr">→</span></a>
+      <a class="pill ghost" id="go-host" href="host.html"><span>방 만들기<small>선생님 · PC에서 열기</small></span><span class="arr">→</span></a>
+    </div>
+    <ul class="steps">
+      <li>자원 생산</li><li>미니게임</li><li>무역·건설</li><li>사건 카드</li>
+    </ul>
+    <a class="testlink" href="test.html">🧪 이 컴퓨터에서 혼자 시험해 보기 <small>인터넷 연결 없이 선생님·학생 화면을 한 페이지에 띄워요</small></a>
+  </main>
+  <div class="foot">2–30 Nations · 6 Rounds · 30 Minutes</div>
+
+  <script>
+    // ?net=local 같은 옵션을 다음 화면으로 그대로 넘깁니다.
+    for (const id of ['go-play', 'go-host']) document.getElementById(id).href += location.search;
+    // file:// 로 열면 게임 스크립트가 막히므로 안내
+    if (!/^https?:$/.test(location.protocol)) document.getElementById('filewarn').hidden = false;
+
+    // ---------- 밤의 지구와 무역로 그리기 ----------
+    const cv = document.getElementById('world');
+    const ctx = cv.getContext('2d');
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W, H, dpr, planet, stars, base, capitals, routes;
+
+    function rng(seed) { return () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    const gauss = (r) => (r() + r() + r() - 1.5) / 1.5;
+
+    function setup() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = Math.max(innerWidth, 320); H = Math.max(innerHeight, 320); // 숨겨진 탭(크기 0)에서도 그림이 깨지지 않게
+      cv.width = W * dpr; cv.height = H * dpr;
+      const land = W > H;
+      const R = Math.max(W, H) * (land ? 1.05 : 1.25);
+      planet = { cx: W * (land ? 0.62 : 0.5), cy: H * (land ? 0.44 : 0.6) + R, R };
+      const r = rng(7);
+      stars = Array.from({ length: Math.round(W * H / 5000) }, () => ({ x: r() * W, y: r() * H, s: r() * 1.1 + 0.2, p: r() * 6.28 }));
+
+      // 도시 불빛: 무리를 지어 흩어진 점들 (한 번만 그려 둠)
+      base = document.createElement('canvas');
+      base.width = cv.width; base.height = cv.height;
+      const b = base.getContext('2d');
+      b.scale(dpr, dpr);
+      drawPlanet(b);
+      const inside = (x, y) => Math.hypot(x - planet.cx, y - planet.cy) < planet.R - 6 && x > -20 && x < W + 20 && y < H + 20;
+      const top = planet.cy - planet.R;
+      const centers = [];
+      for (let tries = 0; centers.length < 14 && tries < 500; tries++) {
+        const x = W * (0.08 + r() * 0.9), y = top + 30 + r() * (H - top);
+        if (inside(x, y) && centers.every((c) => Math.hypot(c.x - x, c.y - y) > Math.min(W, H) * 0.12)) centers.push({ x, y });
+      }
+      for (const c of centers) {
+        const depth = Math.min(1, (c.y - top) / (H - top + 1)); // 아래로 올수록 가까움
+        const spread = 40 + depth * 120;
+        const n = 260 + Math.round(r() * 320);
+        for (let i = 0; i < n; i++) {
+          const x = c.x + gauss(r) * spread * 1.6, y = c.y + gauss(r) * spread * (0.35 + depth * 0.5);
+          if (!inside(x, y)) continue;
+          const size = (0.4 + r() * 1.1) * (0.6 + depth * 0.8);
+          const a = 0.35 + r() * 0.6;
+          b.fillStyle = `rgba(255, ${190 + Math.round(r() * 50)}, ${110 + Math.round(r() * 60)}, ${a})`;
+          b.fillRect(x, y, size, size);
+        }
+      }
+      // 나라(수도) 6곳과 무역로
+      capitals = centers.slice(0, 6).sort((p, q) => p.x - q.x);
+      for (const c of capitals) {
+        const g = b.createRadialGradient(c.x, c.y, 0, c.x, c.y, 26);
+        g.addColorStop(0, 'rgba(255, 214, 140, .55)'); g.addColorStop(1, 'rgba(255, 214, 140, 0)');
+        b.fillStyle = g; b.beginPath(); b.arc(c.x, c.y, 26, 0, 6.29); b.fill();
+      }
+      routes = [];
+      for (let i = 0; i < capitals.length; i++) {
+        for (const j of [i + 1, i + 3]) {
+          if (j >= capitals.length) continue;
+          const a = capitals[i], c = capitals[j];
+          const d = Math.hypot(c.x - a.x, c.y - a.y);
+          routes.push({ a, c, k: { x: (a.x + c.x) / 2, y: (a.y + c.y) / 2 - d * 0.32 }, speed: 0.05 + r() * 0.06, off: r() });
+        }
+      }
+    }
+
+    function drawPlanet(g) {
+      const { cx, cy, R } = planet;
+      // 대기 빛
+      const halo = g.createRadialGradient(cx, cy, Math.max(0, R - 10), cx, cy, R + 90);
+      halo.addColorStop(0, 'rgba(90, 160, 255, .55)');
+      halo.addColorStop(0.12, 'rgba(70, 140, 255, .25)');
+      halo.addColorStop(1, 'rgba(40, 90, 200, 0)');
+      g.fillStyle = halo; g.beginPath(); g.arc(cx, cy, R + 90, 0, 6.29); g.fill();
+      // 땅과 바다
+      const body = g.createRadialGradient(cx, cy - R * 0.9, R * 0.1, cx, cy, R);
+      body.addColorStop(0, '#0d1a2e'); body.addColorStop(0.6, '#060d1a'); body.addColorStop(1, '#0a1630');
+      g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, 6.29); g.fill();
+      // 가장자리 밝은 선
+      g.save(); g.shadowColor = 'rgba(140, 195, 255, .9)'; g.shadowBlur = 18;
+      g.strokeStyle = 'rgba(175, 215, 255, .85)'; g.lineWidth = 1.6;
+      g.beginPath(); g.arc(cx, cy, R, 0, 6.29); g.stroke(); g.restore();
+    }
+
+    const at = (rt, t) => {
+      const u = 1 - t;
+      return { x: u * u * rt.a.x + 2 * u * t * rt.k.x + t * t * rt.c.x, y: u * u * rt.a.y + 2 * u * t * rt.k.y + t * t * rt.c.y };
+    };
+
+    function frame(ms) {
+      const t = ms / 1000;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#03060d'; ctx.fillRect(0, 0, W, H);
+      for (const s of stars) {
+        ctx.globalAlpha = 0.35 + 0.35 * Math.sin(t * 0.8 + s.p);
+        ctx.fillStyle = '#dfe8ff'; ctx.fillRect(s.x, s.y, s.s, s.s);
+      }
+      ctx.globalAlpha = 1;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(base, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // 무역로
+      ctx.lineWidth = 1;
+      for (const rt of routes) {
+        ctx.strokeStyle = 'rgba(127, 182, 255, .22)';
+        ctx.beginPath(); ctx.moveTo(rt.a.x, rt.a.y); ctx.quadraticCurveTo(rt.k.x, rt.k.y, rt.c.x, rt.c.y); ctx.stroke();
+        const p = (t * rt.speed + rt.off) % 1;
+        for (let i = 0; i < 8; i++) {
+          const q = p - i * 0.012; if (q < 0) break;
+          const pt = at(rt, q);
+          ctx.fillStyle = `rgba(255, 214, 140, ${0.9 - i * 0.11})`;
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, 2.2 - i * 0.2, 0, 6.29); ctx.fill();
+        }
+      }
+      for (const c of capitals) {
+        ctx.fillStyle = '#fff3d6'; ctx.beginPath(); ctx.arc(c.x, c.y, 2.6, 0, 6.29); ctx.fill();
+      }
+      if (!still) requestAnimationFrame(frame);
+    }
+
+    setup();
+    requestAnimationFrame(frame);
+    let rt;
+    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { setup(); if (still) requestAnimationFrame(frame); }, 150); });
+  </script>
+</body>
+</html>
