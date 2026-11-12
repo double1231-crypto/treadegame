@@ -81,8 +81,31 @@
    선생님은 `.../host.html`, 학생은 `.../play.html`.
 
 ## 통신 방식
-- 기본: PeerJS(WebRTC) 공개 서버로 선생님 PC와 태블릿을 직접 연결합니다. 학교 와이파이가 WebRTC를 막으면 연결이 안 될 수 있어요.
-- 통신 코드는 `js/net.js` 한 파일에만 있어요. 나중에 Firebase로 바꿀 때 같은 모양의 `hostRoom` / `joinRoom` 함수만 만들면 됩니다.
+- **Firebase (추천)**: `js/firebase-config.js` 에 설정을 넣으면 선생님 PC와 태블릿이 Google 서버를 거쳐 연결돼요.
+  학교 와이파이·LTE 어디서나 들어올 수 있어요. 아래 「Firebase 연결하기」를 보세요.
+- 설정이 비어 있으면 PeerJS(WebRTC)로 기기끼리 직접 연결해요. 서로 다른 네트워크(학교 와이파이 ↔ LTE)에서는
+  「방은 찾았는데 연결이 열리지 않아요」가 뜨며 안 될 때가 많아요. (`?net=peer` 를 붙이면 PeerJS를 강제로 써요)
+- 통신 코드는 `js/net.js` 한 파일에만 있어요.
+
+## Firebase 연결하기 (처음 한 번, 5분)
+1. https://console.firebase.google.com 에 Google 계정으로 들어가 **프로젝트 만들기** (이름 예: `trade-game`, Google 애널리틱스는 꺼도 돼요).
+2. 왼쪽 **빌드 → Realtime Database → 데이터베이스 만들기** → 위치 **싱가포르(asia-southeast1)** → **잠금 모드로 시작** → 사용 설정.
+3. **규칙** 탭의 내용을 모두 지우고 아래를 붙여 넣은 뒤 **게시**:
+   ```json
+   {
+     "rules": {
+       "rooms": {
+         "$room": { ".read": true, ".write": true, ".validate": "$room.matches(/^[0-9]{4}$/)" }
+       }
+     }
+   }
+   ```
+4. **프로젝트 개요(톱니바퀴) → 프로젝트 설정 → 내 앱 → 웹(`</>`) 아이콘** → 앱 닉네임 입력 → 앱 등록.
+   나오는 `firebaseConfig = { ... }` 의 `{ ... }` 부분을 복사해요. (`databaseURL` 줄이 있는지 확인)
+5. `js/firebase-config.js` 의 `export const firebaseConfig = null;` 에서 `null` 을 복사한 `{ ... }` 로 바꾸고 GitHub에 다시 올려요.
+- 무료 요금제(Spark)로 써요. 한 달 내려받기 무료량은 10GB이고, 30명이 30분 하면 대략 1~2GB(추정)라 한 달에 몇 번 수업할 수 있어요.
+  사용량은 Realtime Database의 **사용량** 탭에서 볼 수 있어요.
+- 설정값(apiKey 등)은 웹사이트에 공개돼도 되는 값이에요.
 - 시험용: 주소 끝에 `?net=local` 을 붙이면 인터넷 없이 한 컴퓨터의 여러 탭으로 시험해 볼 수 있어요
   (예: `host.html?net=local`, `play.html?net=local&room=1234`).
 
@@ -96,4 +119,5 @@
 | `js/extras.js` | 미니게임·사건 카드·전쟁·결과 통계 (선생님 쪽) |
 | `js/play-extras.js` | 미니게임·사건·전쟁·결과 화면 (학생 쪽) |
 | `js/events.js` | 사건 카드 목록 |
-| `js/net.js` | 통신 (PeerJS / 테스트용) |
+| `js/net.js` | 통신 (Firebase / PeerJS / 테스트용) |
+| `js/firebase-config.js` | Firebase 설정 (직접 붙여 넣기) |
