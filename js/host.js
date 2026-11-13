@@ -177,7 +177,7 @@ function topBar(s) {
         <button class="${hostView === 'board' ? 'on' : ''}" data-act="hostview" data-v="board">📋 현황판</button>
         <button class="${hostView === 'map' ? 'on' : ''}" data-act="hostview" data-v="map">🗺️ 영토 지도</button>
         <button class="${hostView === 'world' ? 'on' : ''}" data-act="hostview" data-v="world">🌐 세계 지도</button></div>` : ''}
-      ${s.phase === 'lobby' || s.phase === 'prep' ? '<button class="ghost" data-act="tutorial">📖 튜토리얼</button>' : ''}
+      ${s.phase === 'lobby' || s.phase === 'prep' ? '<button class="ghost" data-act="tutorial">📖 튜토리얼</button><button class="ghost" data-act="selftut">📱 각자 튜토리얼</button>' : ''}
       ${s.phase !== 'lobby' ? `<button class="ghost ${s.freeze ? 'warn' : ''}" data-act="tools">🧰 선생님 도구${s.freeze ? ' (멈춤)' : ''}</button>` : ''}
       <label class="switch ${s.tradeBan ? 'on' : ''}"><input type="checkbox" data-act="tradeban" ${s.tradeBan ? 'checked' : ''}>🚫 무역 금지</label>
       <label class="switch"><input type="checkbox" data-act="announce" ${s.announceOn !== false ? 'checked' : ''}>📣 발전 공지</label>
@@ -445,7 +445,10 @@ function render() {
           <div style="font-size:1.3rem;font-weight:700;word-break:break-all;margin-top:8px">${localOnly() ? 'https://(GitHub 아이디).github.io/(저장소 이름)/play.html' : esc(playUrl().split('?')[0])}</div>
           <div class="lobby-code-row"><div class="bigcode">${esc(s.code)}</div>
             ${pickTransport() !== 'local' && !localOnly() ? qrBlock(playUrl()) : ''}</div>
-          <button class="good tut-start" data-act="tutorial">📖 튜토리얼 함께 보기 (게임 방법 설명)</button>
+          <div class="row wrap" style="justify-content:center;gap:10px">
+            <button class="good tut-start" data-act="tutorial">📖 튜토리얼 함께 보기 (선생님 화면)</button>
+            <button class="ghost tut-start" data-act="selftut">📱 태블릿에서 각자 보기</button></div>
+          <div class="muted" style="margin:-4px 0 12px">학생은 나라를 만들면 게임 방법이 자기 태블릿에 한 번 떠요. 화면 위 「📖 방법」으로 언제든 다시 볼 수 있어요.</div>
           ${pickTransport() === 'local' ? `<div class="banner info" style="margin:0 0 14px">🧪 <b>테스트 모드</b>예요. 같은 브라우저의 탭끼리만 연결돼요. 아래 버튼을 누를 때마다 학생 탭이 하나씩 열려요.</div>
           <a class="test-open" href="${esc(playUrl())}" target="_blank" rel="noopener">＋ 학생 탭 열기</a>` : ''}
           <div class="muted">나라 이름·국기를 정하면 오른쪽에 나타나요. 확인 후 승인해 주세요.</div>
@@ -500,6 +503,11 @@ app.addEventListener('click', (e) => {
     case 'hostview': hostView = b.dataset.v; render(); break;
     case 'tutorial': openTutorial(game); break;
     case 'race': openRace(game); break;
+    case 'selftut':
+      game.s.selfTut = { id: game.s.nextId++, time: Date.now() };
+      game.changed();
+      toast('📱 학생 태블릿마다 게임 방법이 떠요. 각자 넘겨 보게 해 주세요.', 'good');
+      break;
     case 'tools': openTools(game); break;
     case 'setlen': game.setSetting('length', Number(b.dataset.v)); break;
     case 'setq': game.setSetting('qset', b.dataset.v); break;

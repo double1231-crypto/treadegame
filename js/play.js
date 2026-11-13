@@ -4,6 +4,8 @@ import { RES, RES_INFO, STAGES, UPGRADE_COST, WORKSHOP, FLAGS, PHASE_NAME, GOODS
 import { joinRoom, pickTransport } from './net.js';
 import { $, esc, fmtTime, toast, store, uid, icons, resChips, josa, sfx, won } from './ui.js';
 import { territorySvg, facilityLegend, announceHtml, crisisHtml, newsHtml, unlockHtml } from './territory.js';
+import { openStudentTutorial, closeStudentTutorial, onPractice } from './tutorial.js';
+import { startPractice } from './practice.js';
 
 const app = $('#app');
 const overlay = $('#overlay');
@@ -76,11 +78,54 @@ function connect(code) {
 }
 
 function send(msg) {
+  if (practice) return practice.handle({ ...msg, pid }); // 🧪 연습 중에는 태블릿 안의 연습 게임으로
   if (!conn || !conn.send({ ...msg, pid })) toast('연결이 끊겼어요. 잠시 후 다시 해 보세요.', 'bad');
+}
+
+/* ---------- 🧪 직접 해 보는 연습 ---------- */
+let practice = null;
+let realView = null;
+const canPractice = () => !!view?.me && !view.unknown && (!view.me.approved || view.phase === 'lobby' || view.phase === 'prep');
+function beginPractice() {
+  if (practice) return;
+  if (!canPractice()) return toast('연습은 게임 시작 전이나 준비 시간에만 할 수 있어요.', 'bad');
+  closeStudentTutorial();
+  realView = view;
+  tab = 'trade';
+  resetScreenFx();
+  document.body.classList.add('practicing');
+  practice = startPractice({
+    pid, me: view.me, toast,
+    deliver: (m) => { m.__practice = true; onMessage(m); },
+    onEnd: () => {
+      practice = null;
+      document.body.classList.remove('practicing');
+      tab = 'trade';
+      resetScreenFx();
+      const rv = realView; realView = null;
+      if (rv) onMessage(rv); else render();
+    },
+  });
+}
+
+// 연습 화면과 진짜 화면을 오갈 때 축하·알림이 남지 않게
+function resetScreenFx() {
+  celebrate = null; prevStage = null; prevRes = null; annShow = null; crisisShow = null;
 }
 
 function onMessage(msg) {
   if (!msg) return;
+  // 연습 중에 온 진짜 게임 소식은 모아 두었다가 연습이 끝나면 보여요
+  if (practice && !msg.__practice) {
+    if (msg.t === 'state') {
+      realView = msg;
+      if (msg.me?.approved && msg.phase !== 'lobby' && msg.phase !== 'prep') {
+        toast('🎬 진짜 게임이 시작됐어요! 연습을 마쳐요.', 'good');
+        practice.stop();
+      }
+    }
+    return;
+  }
   if (msg.t === 'toast') { if (msg.kind === 'good') sfx('good', !!view?.studentSound); return toast(msg.text, msg.kind); }
   if (msg.t === 'error') return toast('⚠️ ' + msg.text, 'bad');
   if (msg.t !== 'state') return;
@@ -95,6 +140,28 @@ function onMessage(msg) {
   screen = msg.me.approved ? 'game' : 'waiting';
   onStateExtra?.(before, msg);
   render();
+  if (!msg.__practice) autoTutorial();
+}
+
+// 📖 처음 들어오면 게임 방법을 한 번 보여 줘요. 선생님이 「태블릿에서 각자 보기」를 누르면 다시 떠요.
+let selfTutSeen = null;
+onPractice(() => beginPractice());
+function autoTutorial() {
+  const v = view;
+  if (!v?.me) return;
+  if (v.phase === 'minigame') { closeStudentTutorial(); return; }
+  if (v.phase === 'end') return;
+  const key = 'tradeciv-tut-' + room + (seat ? '-' + seat : '');
+  if (v.selfTut && v.selfTut.id !== selfTutSeen) {
+    selfTutSeen = v.selfTut.id;
+    idStore.setItem(key, '1');
+    openStudentTutorial(v, canPractice());
+    return;
+  }
+  if (!idStore.getItem(key) && (v.phase === 'lobby' || v.phase === 'prep')) {
+    idStore.setItem(key, '1');
+    openStudentTutorial(v, canPractice());
+  }
 }
 
 /* ---------- 확장(미니게임·사건·전쟁) 자리 ---------- */
@@ -199,6 +266,8 @@ function renderWaiting() {
       ${flagSvg(me, 'big')}
       <div style="font-size:2rem;font-weight:800">${esc(me.name)}</div>
       <h2>⏳ 선생님이 승인하면 시작해요</h2>
+      <button class="good" data-act="practice" style="font-size:1.25rem">🧪 직접 해 보기 (연습)</button>
+      <button class="ghost" data-act="howto">📖 게임 방법 보기</button>
       <p class="muted">이름을 바꾸고 싶으면 아래 버튼을 눌러요.</p>
       <button class="ghost" data-act="editsetup">✏️ 다시 고치기</button>
     </div>
@@ -309,7 +378,7 @@ function renderGame() {
     <div class="topbar">
       <div class="mybar" style="--nation:${esc(me.color)}">
         ${flagSvg(me, 'bar')}
-        <div><div class="name">${esc(me.name)}</div><div class="stage">${st.icon} ${st.name}</div>
+        <div><div class="name">${esc(me.name)} <button class="ghost small howto-btn" data-act="howto" aria-label="게임 방법">📖 방법</button></div><div class="stage">${st.icon} ${st.name}</div>
           <div class="my-gdp">💵 1인당 GDP <b>${won((me.gdp ?? 0))}</b></div>
           ${me.like ? `<div class="gdp-like">🌍 ${me.like.korea ? '대한민국(우리나라)과' : esc(josa(me.like.name, '과/와'))} 비슷해요${me.like.next ? ` <span>· 다음: ${esc(me.like.next.name)} ${won(me.like.next.at)}</span>` : ' 🏆'}</div>` : ''}</div>
         <div class="timer"><span>${phaseTxt}</span><b id="ptimer">${fmtTime(remainingMs())}</b></div>
@@ -726,6 +795,8 @@ document.addEventListener('click', (e) => {
       send({ t: 'join', name: setup.name, flag: setup.flag, design: setup.design, color: nationColor(setup.design) });
       break;
     case 'editsetup': screen = 'setup'; renderSetup(); break;
+    case 'howto': openStudentTutorial(practice ? realView : view, canPractice() && !practice); break;
+    case 'practice': beginPractice(); break;
     case 'tab': tab = b.dataset.v; render(); window.scrollTo(0, 0); break;
     case 'pick': draft = { to: b.dataset.v, give: emptyRes(), get: emptyRes(), mode: draft.mode }; render(); break;
     case 'mode': draft = { to: draft.to, give: emptyRes(), get: emptyRes(), mode: b.dataset.v }; render(); break;

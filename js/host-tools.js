@@ -337,7 +337,7 @@ export function badgesCard(g) {
     <p class="muted">모든 나라가 하나씩 받아요. 잘한 점을 크게 칭찬해 주세요!</p>
     <div class="badge-grid">${bs.map((b, i) => {
       const c = g.c(b.pid); if (!c) return '';
-      return `<div class="badge" style="--d:${i * 0.12}s;border-color:${esc(c.color)}">
+      return `<div class="pbadge" style="--d:${i * 0.12}s;border-color:${esc(c.color)}">
         <div class="b-icon">${b.icon}</div><div class="b-title">${esc(b.title)}</div>
         <div class="b-who">${flagSvg(c, 'inline')} <b>${esc(c.name)}</b></div><div class="b-text">${esc(b.text)}</div></div>`;
     }).join('')}</div></div>`;

@@ -715,6 +715,8 @@ export class Game {
       reflectQs: s.phase === 'end' ? REFLECT_QS : null, reflected: !!c.reflect,
       worldMsg: s.worldMsg && Date.now() - s.worldMsg.time < 15000 ? s.worldMsg : null,
       mission: this.missionView?.(c) ?? null,
+      on: Object.fromEntries(['minigame', 'mission', 'goods', 'aid', 'world', 'war', 'unlock', 'events'].map((f) => [f, this.on(f)])),
+      selfTut: s.selfTut && Date.now() - s.selfTut.time < 120000 ? s.selfTut : null,
       badges: s.phase === 'end' ? s.badges || null : null,
     };
   }
