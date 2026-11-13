@@ -402,10 +402,39 @@ h1, h2, h3 { margin: 0 0 .5em; line-height: 1.25; letter-spacing: -.01em; }
 .gdp-pill { background: rgba(255, 207, 122, .14) !important; color: var(--gold) !important; border-color: transparent !important; font-family: 'Space Grotesk', 'Pretendard', sans-serif; }
 
 /* 세계 평화 점수 (선생님 화면) */
-.peace { min-width: 210px; padding: 8px 14px; border-radius: 16px; background: var(--well); border: 1px solid var(--line); }
-.peace .peace-hd { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: 6px; }
-.peace .peace-hd b { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; }
-.peace .pbar { position: relative; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .08); margin-top: 4px; overflow: visible; }
+.peace { min-width: 300px; padding: 10px 18px 12px; border-radius: 18px; background: var(--well); border: 1px solid var(--line-hi, var(--line)); }
+.peace .peace-hd { font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; gap: 12px; }
+.peace .plabel { display: flex; flex-direction: column; line-height: 1.2; }
+.peace .plabel small { font-size: .85rem; font-weight: 700; color: var(--good); }
+.peace.low .plabel small { color: var(--warn); }
+.peace.crisis .plabel small { color: #ffc2c2; }
+.peace .peace-hd b { font-family: 'Space Grotesk', sans-serif; font-size: 2.8rem; line-height: 1; margin-left: auto; }
+.peace .pbar { position: relative; height: 16px; border-radius: 999px; background: rgba(255, 255, 255, .08); margin-top: 8px; overflow: visible; }
+.peace .pbar em { height: 22px !important; }
+.my-gdp b, .gdp-chip b, .rank-strip .rk > span { white-space: nowrap; }
+.gdp-like { font-size: .85rem; color: #9fd8ff; margin-top: 2px; }
+.gdp-like span { color: var(--muted); }
+.gdp-chip .like { display: block; font-size: .75rem; color: #9fd8ff; font-weight: 600; }
+.music-widget { position: fixed; left: 14px; bottom: 14px; z-index: 50; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 999px; background: rgba(10, 16, 30, .88); border: 1px solid var(--line); backdrop-filter: blur(6px); font-size: .85rem; }
+.music-widget .mw-toggle { padding: 5px 12px; font-size: .85rem; border-radius: 999px; }
+.music-widget .mw-toggle.off { opacity: .6; background: transparent; color: var(--muted); }
+.music-widget input[type=range] { width: 110px; accent-color: var(--gold, #ffcf7a); }
+.music-widget .mw-mood { color: var(--muted); white-space: nowrap; }
+@media print { .music-widget { display: none; } }
+.rank-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 18px; background: var(--well); border: 1px solid var(--line); }
+.rank-strip .rk-title { font-weight: 800; margin-right: 4px; }
+.rank-strip .rk { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); font-size: .95rem; }
+.rank-strip .rk.top { background: rgba(255, 207, 122, .1); border-color: rgba(255, 207, 122, .4); font-size: 1.05rem; }
+.rank-strip .rk em { font-style: normal; font-weight: 800; min-width: 1.4em; text-align: center; }
+.rank-strip .rk > span { color: var(--gold, #ffcf7a); font-weight: 700; }
+.rank-strip .rk i { font-style: normal; font-size: .8rem; }
+.rank-strip .rk i.up { color: var(--good); }
+.rank-strip .rk i.down { color: var(--bad); }
+.count-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: nowrap; }
+.count-hd h3 { margin: 0; flex: 1; white-space: nowrap; font-size: 1.05rem; min-width: 0; }
+.count-ctl { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; flex: none; }
+.count-ctl button.small { padding: 3px 8px; min-width: 0; font-size: .85rem; }
+.count-ctl b { font-size: 1.25rem; min-width: 2.2ch; text-align: center; }
 .peace .pbar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #4f8df5, var(--good)); transition: width .5s; }
 .peace .pbar em { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--bad); }
 .peace.low .pbar i { background: linear-gradient(90deg, #f0a020, var(--warn)); }
@@ -577,3 +606,58 @@ h1, h2, h3 { margin: 0 0 .5em; line-height: 1.25; letter-spacing: -.01em; }
 .speak-btn { margin: -6px auto 12px; display: block; }
 .mg .choices.long button { font-size: 1.05rem; text-align: left; min-height: 64px; line-height: 1.4; }
 .unlock-sheet { box-shadow: 0 0 0 2px rgba(127, 182, 255, .6), 0 0 70px rgba(127, 182, 255, .3); }
+
+/* ---------- 🕵️ 비밀 임무 (학생) ---------- */
+.mission-card { border: 1px dashed rgba(180, 140, 255, .6); background: linear-gradient(135deg, rgba(120, 80, 220, .14), rgba(20, 24, 40, .4)); }
+.mission-card.done { border-style: solid; border-color: var(--good); background: linear-gradient(135deg, rgba(60, 200, 120, .16), rgba(20, 24, 40, .4)); }
+.mission-card .m-hd { display: flex; justify-content: space-between; align-items: center; font-size: .85rem; }
+.mission-card .m-tag { font-weight: 800; color: #cdb6ff; letter-spacing: .02em; }
+.mission-card.done .m-tag { color: var(--good); }
+.mission-card .m-body { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; margin: 8px 0; }
+.mission-card .m-icon { font-size: 1.8rem; }
+.mission-card .m-bar { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.mission-card .m-bar i { display: block; height: 100%; background: linear-gradient(90deg, #8a6cff, #c9a6ff); transition: width .5s; }
+.mission-card.done .m-bar i { background: var(--good); }
+.mission-card .m-foot { margin-top: 6px; font-size: .9rem; color: var(--muted); }
+.mission-card.done .m-foot { color: var(--good); font-weight: 700; }
+
+/* ---------- 🏅 칭찬 배지 ---------- */
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 10px; }
+.badge { text-align: center; padding: 14px 10px; border-radius: 18px; background: var(--well); border: 2px solid var(--line); animation: badgePop .6s both; animation-delay: var(--d, 0s); }
+.badge .b-icon, .my-badge .b-icon { font-size: 2.8rem; line-height: 1.1; }
+.badge .b-title { font-weight: 800; font-size: 1.15rem; color: var(--gold, #ffcf7a); margin-top: 4px; }
+.badge .b-who { margin-top: 6px; }
+.badge .b-text { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+@keyframes badgePop { from { opacity: 0; transform: scale(.6) rotate(-6deg); } 70% { transform: scale(1.06); } to { opacity: 1; transform: none; } }
+.my-badge { padding: 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(255, 207, 122, .2), rgba(255, 140, 80, .08)); border: 2px solid rgba(255, 207, 122, .6); animation: badgePop .8s both; }
+.my-badge .b-icon { font-size: 4rem; }
+.my-badge .b-title { font-size: 1.6rem; font-weight: 800; color: var(--gold, #ffcf7a); }
+.my-badge .b-text { color: var(--muted); }
+
+/* ---------- 🎤 라운드 하이라이트 (선생님) ---------- */
+#highlight { z-index: 120; }
+.hl-sheet { width: min(1100px, 94vw); max-height: 90vh; overflow: auto; padding: 28px 32px; border-radius: 28px; background: radial-gradient(circle at 50% 0, rgba(255, 207, 122, .18), transparent 60%), var(--panel, #10182b); border: 1px solid rgba(255, 207, 122, .4); text-align: center; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.hl-sheet h1 { font-size: 2.6rem; margin: 6px 0 18px; }
+.hl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; text-align: left; margin-bottom: 18px; }
+.hl-item { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 18px; background: var(--well); border: 1px solid var(--line); animation: hlIn .5s both; animation-delay: var(--d, 0s); }
+.hl-icon { font-size: 2.6rem; }
+.hl-title { font-weight: 800; font-size: 1.25rem; color: var(--gold, #ffcf7a); }
+.hl-names { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; font-size: 1.15rem; font-weight: 700; }
+.hl-who { white-space: nowrap; }
+.hl-text { color: var(--muted); }
+@keyframes hlIn { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: none; } }
+
+/* ---------- 🏁 GDP 레이스 (선생님) ---------- */
+#race { z-index: 130; }
+.race-sheet { width: min(1200px, 96vw); padding: 24px 28px; border-radius: 28px; background: var(--panel, #10182b); border: 1px solid var(--line-hi, var(--line)); box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.race-sheet .row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.race-round { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700; color: var(--gold, #ffcf7a); min-width: 6ch; text-align: right; }
+.race-track { position: relative; }
+.race-row { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 12px; transition: transform .9s cubic-bezier(.4, 1.4, .5, 1); }
+.race-name { width: 190px; flex: none; font-weight: 800; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.race-bar-wrap { flex: 1; display: flex; align-items: center; gap: 10px; height: 100%; }
+.race-bar { height: 70%; border-radius: 0 12px 12px 0; transition: width 1.2s ease; box-shadow: 0 0 18px rgba(255, 255, 255, .08); }
+.race-val { white-space: nowrap; font-size: 1.05rem; }
+.race-row.lead .race-bar { box-shadow: 0 0 24px rgba(255, 207, 122, .55); }
+.race-row.lead .race-val { color: var(--gold, #ffcf7a); }
+.race-foot { text-align: center; font-size: 1.6rem; margin-top: 16px; min-height: 2em; }
