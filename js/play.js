@@ -85,7 +85,15 @@ function send(msg) {
 /* ---------- 🧪 직접 해 보는 연습 ---------- */
 let practice = null;
 let realView = null;
-const canPractice = () => !!view?.me && !view.unknown && (!view.me.approved || view.phase === 'lobby' || view.phase === 'prep');
+// 연습은 게임 시작 전에 해요 (게임 시간이 흐르는 동안에는 안 돼요). 늦게 들어와 승인을 기다리는 학생은 할 수 있어요.
+const canPractice = () => !!view?.me && !view.unknown && (!view.me.approved || view.phase === 'lobby');
+const tutKey = () => 'tradeciv-tutdone-' + room + (seat ? '-' + seat : '');
+function realSend(msg) { return conn?.send({ ...msg, pid }); }
+// 연습까지 끝내면 선생님 화면에 「튜토리얼 완료」를 알려요
+function markTutDone() {
+  idStore.setItem(tutKey(), '1');
+  realSend({ t: 'tutdone' });
+}
 function beginPractice() {
   if (practice) return;
   if (!canPractice()) return toast('연습은 게임 시작 전이나 준비 시간에만 할 수 있어요.', 'bad');
@@ -95,7 +103,7 @@ function beginPractice() {
   resetScreenFx();
   document.body.classList.add('practicing');
   practice = startPractice({
-    pid, me: view.me, toast,
+    pid, me: view.me, toast, onComplete: markTutDone,
     deliver: (m) => { m.__practice = true; onMessage(m); },
     onEnd: () => {
       practice = null;
@@ -106,6 +114,15 @@ function beginPractice() {
       if (rv) onMessage(rv); else render();
     },
   });
+}
+
+// 게임 시작 전: 튜토리얼(연습)을 끝냈는지 알려 주는 띠
+function tutBanner(v) {
+  if (!v?.tutRequired) return '';
+  return v.tutDone
+    ? '<div class="banner good tut-banner">✅ 튜토리얼 완료! 친구들이 끝낼 때까지 기다려요. 모두 끝나면 선생님이 시작해요.</div>'
+    : `<div class="banner info tut-banner">📌 <b>직접 해 보기(연습)</b>까지 끝내야 게임을 시작할 수 있어요.
+        <button class="good" data-act="practice">🧪 직접 해 보기</button><button class="ghost small" data-act="howto">📖 게임 방법</button></div>`;
 }
 
 // 연습 화면과 진짜 화면을 오갈 때 축하·알림이 남지 않게
@@ -119,7 +136,7 @@ function onMessage(msg) {
   if (practice && !msg.__practice) {
     if (msg.t === 'state') {
       realView = msg;
-      if (msg.me?.approved && msg.phase !== 'lobby' && msg.phase !== 'prep') {
+      if (msg.me?.approved && msg.phase !== 'lobby') {
         toast('🎬 진짜 게임이 시작됐어요! 연습을 마쳐요.', 'good');
         practice.stop();
       }
@@ -145,6 +162,7 @@ function onMessage(msg) {
 
 // 📖 처음 들어오면 게임 방법을 한 번 보여 줘요. 선생님이 「태블릿에서 각자 보기」를 누르면 다시 떠요.
 let selfTutSeen = null;
+let lastTutPhase = null;
 onPractice(() => beginPractice());
 function autoTutorial() {
   const v = view;
@@ -152,13 +170,18 @@ function autoTutorial() {
   if (v.phase === 'minigame') { closeStudentTutorial(); return; }
   if (v.phase === 'end') return;
   const key = 'tradeciv-tut-' + room + (seat ? '-' + seat : '');
+  // 이미 연습을 끝냈는데 선생님 화면이 모르면(새로고침 등) 다시 알려요
+  if (v.tutRequired && !v.tutDone && idStore.getItem(tutKey())) realSend({ t: 'tutdone' });
+  // 게임이 시작되는 순간에는 튜토리얼 화면을 닫아요 (게임 중에 「📖 방법」으로 다시 여는 건 괜찮아요)
+  if (lastTutPhase === 'lobby' && v.phase !== 'lobby') closeStudentTutorial();
+  lastTutPhase = v.phase;
   if (v.selfTut && v.selfTut.id !== selfTutSeen) {
     selfTutSeen = v.selfTut.id;
     idStore.setItem(key, '1');
     openStudentTutorial(v, canPractice());
     return;
   }
-  if (!idStore.getItem(key) && (v.phase === 'lobby' || v.phase === 'prep')) {
+  if (!idStore.getItem(key) && (v.phase === 'lobby' || !v.me.approved)) {
     idStore.setItem(key, '1');
     openStudentTutorial(v, canPractice());
   }
@@ -266,7 +289,8 @@ function renderWaiting() {
       ${flagSvg(me, 'big')}
       <div style="font-size:2rem;font-weight:800">${esc(me.name)}</div>
       <h2>⏳ 선생님이 승인하면 시작해요</h2>
-      <button class="good" data-act="practice" style="font-size:1.25rem">🧪 직접 해 보기 (연습)</button>
+      ${view.tutRequired && view.tutDone ? tutBanner(view) : `<button class="good" data-act="practice" style="font-size:1.25rem">🧪 직접 해 보기 (연습)</button>
+      ${view.tutRequired ? '<div class="muted">📌 연습까지 끝내야 게임을 시작할 수 있어요.</div>' : ''}`}
       <button class="ghost" data-act="howto">📖 게임 방법 보기</button>
       <p class="muted">이름을 바꾸고 싶으면 아래 버튼을 눌러요.</p>
       <button class="ghost" data-act="editsetup">✏️ 다시 고치기</button>
@@ -365,6 +389,7 @@ function renderGame() {
   if (v.tradeBan) banner += '<div class="banner bad">🚫 지금은 선생님이 무역을 금지했어요. (🎁 원조와 🙏 도움 요청은 할 수 있어요)</div>';
   if (me.warUntil > v.round) banner += `<div class="banner bad">⚔️ 전쟁 때문에 ${me.warUntil}라운드까지 생산이 절반으로 줄어요.</div>`;
   if (v.paused) banner += '<div class="banner warn">⏸ 선생님이 잠시 멈췄어요.</div>';
+  if (!practice && v.tutRequired) banner += tutBanner(v);
 
   const tabs = [
     ['trade', '🤝', '무역', incoming.length],

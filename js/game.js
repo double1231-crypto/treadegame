@@ -154,6 +154,23 @@ export class Game {
     this.changed();
   }
 
+  // 📱 학생 튜토리얼(연습)을 끝냈어요
+  tutDone(pid) {
+    const c = this.c(pid);
+    if (!c || c.tutDone) return;
+    c.tutDone = true;
+    this.addLog('tutorial', `✅ ${c.flag}${c.name} 나라가 튜토리얼을 끝냈어요.`, false);
+    this.changed();
+  }
+  // 튜토리얼을 기다려야 하나요? (게임 시작 전, 설정이 켜져 있고, 선생님이 건너뛰지 않았을 때)
+  tutWaiting() {
+    const s = this.s;
+    if (s.phase !== 'lobby' || !this.on('tutorial') || s.tutSkip) return null;
+    const cs = this.list.filter((c) => c.approved);
+    const done = cs.filter((c) => c.tutDone).length;
+    return { done, total: cs.length, all: cs.length > 0 && done === cs.length };
+  }
+
   setOnline(pid, on) { const c = this.c(pid); if (c && c.online !== on) { c.online = on; this.changed(); } }
 
   setupCountry(c, traits) {
@@ -717,6 +734,8 @@ export class Game {
       mission: this.missionView?.(c) ?? null,
       on: Object.fromEntries(['minigame', 'mission', 'goods', 'aid', 'world', 'war', 'unlock', 'events'].map((f) => [f, this.on(f)])),
       selfTut: s.selfTut && Date.now() - s.selfTut.time < 120000 ? s.selfTut : null,
+      tutRequired: s.phase === 'lobby' && this.on('tutorial') && !s.tutSkip,
+      tutDone: !!c.tutDone,
       badges: s.phase === 'end' ? s.badges || null : null,
     };
   }

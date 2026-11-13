@@ -56,6 +56,7 @@ export const FEATURE_DEFAULTS = {
   minigame: true, events: true, goods: true, world: true, aid: true, war: true,
   unlock: true,     // 라운드마다 기능이 하나씩 열려요
   mission: true,    // 🕵️ 라운드마다 나라별 비밀 임무
+  tutorial: true,   // 📱 학생이 각자 튜토리얼(연습)을 끝내야 게임을 시작할 수 있어요
   sound: true,      // 선생님 화면 효과음
   studentSound: false, // 학생 태블릿 효과음
 };

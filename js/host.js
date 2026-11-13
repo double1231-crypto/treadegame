@@ -68,6 +68,7 @@ function onMessage(cid, msg) {
     return;
   }
   if (cidToPid.get(cid) !== pid) return;
+  if (msg.t === 'tutdone') { game.tutDone(pid); return; } // 승인 전에도 튜토리얼은 끝낼 수 있어요
   const c = game.c(pid);
   if (!c || !c.approved) return;
   let err = null;
@@ -159,7 +160,11 @@ function topBar(s) {
   const paused = s.pausedRemaining != null;
   const timed = !!s.phaseEndsAt || paused;
   let main;
-  if (s.phase === 'lobby') main = `<button class="good" data-act="start" ${game.list.length ? '' : 'disabled'}>▶ 게임 시작 (준비 2분)</button>`;
+  const tw = game.tutWaiting();
+  if (s.phase === 'lobby' && tw && !tw.all) {
+    main = `<button class="good" data-act="start" disabled>⏳ 튜토리얼 기다리는 중 (${tw.done}/${tw.total})</button>
+      <button class="ghost" data-act="tutskip">⏭ 튜토리얼 건너뛰고 시작</button>`;
+  } else if (s.phase === 'lobby') main = `<button class="good" data-act="start" ${game.list.length ? '' : 'disabled'}>▶ 게임 시작 (준비 2분)${tw?.all ? ' · 모두 튜토리얼 완료!' : ''}</button>`;
   else if (s.phase === 'end') main = `<button class="ghost" data-act="newgame">🔄 새 게임</button>`;
   else main = `<button data-act="next">⏭ 다음 단계</button>`;
   return `
@@ -256,6 +261,7 @@ function approvals() {
     ${[...pend, ...ok].map((c) => `
       <div class="approve-item">
         ${flagSvg(c, 'pick')}        <b class="grow">${esc(c.name)}</b>
+        ${game.s.phase === 'lobby' && game.on('tutorial') ? (c.tutDone ? '<span class="pill good">✅ 튜토리얼</span>' : '<span class="pill">📖 튜토리얼 중</span>') : ''}
         ${c.approved ? '<span class="pill good">승인됨</span>' : '<span class="pill warn">승인 대기</span>'}
         <button class="ghost small" data-act="rename" data-pid="${esc(c.pid)}">이름 수정</button>
         ${c.approved ? '' : `<button class="good small" data-act="approve" data-pid="${esc(c.pid)}">승인</button>`}
@@ -448,7 +454,12 @@ function render() {
           <div class="row wrap" style="justify-content:center;gap:10px">
             <button class="good tut-start" data-act="tutorial">📖 튜토리얼 함께 보기 (선생님 화면)</button>
             <button class="ghost tut-start" data-act="selftut">📱 태블릿에서 각자 보기</button></div>
-          <div class="muted" style="margin:-4px 0 12px">학생은 나라를 만들면 게임 방법이 자기 태블릿에 한 번 떠요. 화면 위 「📖 방법」으로 언제든 다시 볼 수 있어요.</div>
+          ${(() => {
+            const tw = game.tutWaiting();
+            return tw ? `<div class="banner ${tw.all ? 'good' : 'info'}" style="margin:0 0 14px">📱 학생은 나라를 만들면 자기 태블릿에서 <b>튜토리얼 → 직접 해 보기(연습)</b>를 해요.
+              ${tw.total ? `<b>튜토리얼 완료 ${tw.done} / ${tw.total}</b> ${tw.all ? '· 모두 끝냈어요! 게임을 시작하세요 🎉' : '· 모두 끝내면 게임을 시작할 수 있어요 (그동안 게임 시간은 흐르지 않아요)'}` : ''}</div>`
+              : '<div class="muted" style="margin:-4px 0 12px">학생은 화면 위 「📖 방법」으로 게임 방법을 언제든 볼 수 있어요.</div>';
+          })()}
           ${pickTransport() === 'local' ? `<div class="banner info" style="margin:0 0 14px">🧪 <b>테스트 모드</b>예요. 같은 브라우저의 탭끼리만 연결돼요. 아래 버튼을 누를 때마다 학생 탭이 하나씩 열려요.</div>
           <a class="test-open" href="${esc(playUrl())}" target="_blank" rel="noopener">＋ 학생 탭 열기</a>` : ''}
           <div class="muted">나라 이름·국기를 정하면 오른쪽에 나타나요. 확인 후 승인해 주세요.</div>
@@ -495,7 +506,16 @@ app.addEventListener('click', (e) => {
   if (!b || b.tagName === 'INPUT') return;
   const act = b.dataset.act; const pid = b.dataset.pid;
   switch (act) {
-    case 'start': game.start(); break;
+    case 'start': {
+      const tw = game.tutWaiting();
+      if (tw && !tw.all) break; // 모두 튜토리얼을 끝내야 시작해요 (건너뛰기 버튼으로 바로 시작 가능)
+      game.start(); break;
+    }
+    case 'tutskip':
+      if (!confirm('아직 튜토리얼을 끝내지 않은 학생이 있어요. 튜토리얼을 건너뛰고 게임을 시작할까요?')) break;
+      game.s.tutSkip = true;
+      game.start();
+      break;
     case 'next': game.advance(); break;
     case 'pause': game.pause(); break;
     case 'resume': game.resume(); break;

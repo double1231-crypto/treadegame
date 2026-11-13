@@ -10,7 +10,7 @@ const BOTS = [
 ];
 const chip = (r) => `${RES_INFO[r].icon}${RES_INFO[r].name}`;
 
-export function startPractice({ pid, me, deliver, toast, onEnd }) {
+export function startPractice({ pid, me, deliver, toast, onEnd, onComplete }) {
   const state = newGameState('practice');
   state.settings.features = {
     minigame: false, events: false, goods: false, world: false, aid: false, war: false,
@@ -116,7 +116,7 @@ export function startPractice({ pid, me, deliver, toast, onEnd }) {
       for (const [r, n] of Object.entries(UPGRADE_COST[1] || {})) c.res[r] = Math.max(c.res[r] || 0, n);
       game.changed();
     }
-    if (k === 3) toast('🎉 연습 완료! 잘했어요!', 'good');
+    if (k === 3) { toast('🎉 연습 완료! 잘했어요!', 'good'); onComplete?.(); }
   }
   function sendBotOffer() {
     if ((c.res[myRich] || 0) < 1) c.res[myRich] = 1;

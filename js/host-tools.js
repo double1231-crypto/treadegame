@@ -10,7 +10,7 @@ import { esc, resChips, sfx, won } from './ui.js';
 /* ================= 선생님 설정 (참가 대기 화면) ================= */
 const FEATURE_LABEL = {
   minigame: '🎯 미니게임', events: '🃏 사건 카드', goods: '🏭 공장·공산품', world: '🌐 세계 과제(프로젝트·입찰)',
-  aid: '🎁 원조·도움 요청', war: '⚔️ 전쟁', mission: '🕵️ 비밀 임무', unlock: '🔓 기능 하나씩 열기', sound: '🔊 선생님 효과음', studentSound: '📱 학생 태블릿 효과음',
+  aid: '🎁 원조·도움 요청', war: '⚔️ 전쟁', mission: '🕵️ 비밀 임무', tutorial: '📱 학생 튜토리얼 먼저 끝내기', unlock: '🔓 기능 하나씩 열기', sound: '🔊 선생님 효과음', studentSound: '📱 학생 태블릿 효과음',
 };
 const minutes = (len) => {
   const t = LENGTHS[len];
