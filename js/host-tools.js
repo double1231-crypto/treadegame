@@ -112,7 +112,7 @@ function buildSlides(g) {
     <p class="tut-lead"><b>「🗺️ 영토·건설」 탭</b>에서 필요한 자원을 다 모으면 <b>발전하기</b>를 눌러요.</p>
     <p>발전할수록 영토가 넓어지고, <b>자원 생산</b>과 라운드마다 버는 <b>1인당 GDP</b>(마을 ${won(GDP.perRound[0])} → 제국 ${won(GDP.perRound[3])})가 늘어나요.</p>` });
   if (g.on('goods')) S.push({ icon: '🏭', title: '공장: 원료로 공산품 만들기', body: `
-    <div class="tut-goods">${GOODS.map((k) => `<div class="good-card"><div class="gc-icon">${GOODS_INFO[k].icon}</div><b>${GOODS_INFO[k].name}</b>
+    <div class="tut-goods">${GOODS.map((k) => `<div class="good-card"><div class="gc-icon">${GOODS_INFO[k].icon}</div><b>${GOODS_INFO[k].name}</b> <small class="muted">${GOODS_INFO[k].round}R~</small>
       <div>${resChips(GOODS_INFO[k].recipe)} <span class="muted">(🔬 ${resChips(GOODS_INFO[k].techRecipe)})</span></div><div class="muted">수출하면 ${won(GOODS_INFO[k].gdp, true)}</div></div>`).join('')}</div>
     <p class="tut-lead">원료를 가공해 만든 <b>공산품</b>을 다른 나라에 <b>수출</b>하면 1인당 GDP가 크게 올라요.</p>
     <p><b>🔬 기술 나라</b>는 원료가 덜 들어요. 자원이 부족해도 <b>원료를 수입해서 상품을 만들어 수출</b>하면 크게 성장할 수 있어요!</p>
@@ -315,7 +315,7 @@ export function downloadCsv(g) {
     .map(([r, n]) => `${ITEM_INFO[r].name} ${n}`).join(' / ');
   const total = (book) => Object.values(book || {}).reduce((a, n) => a + n, 0);
   const head = ['순위', '나라', '칭찬 배지', '1인당 GDP(만 원)', '발전 단계', '무역 횟수', '원조 보냄', '원조 받음', '전쟁', '미니게임 정답', '비밀 임무 성공', '수출 합계', '주요 수출품', '수입 합계', '주요 수입품', '기술 나라', '무역항 나라', ...REFLECT_QS.map((q, i) => `되돌아보기 ${i + 1}`)];
-  const badgeOf = (c) => { const b = (g.s.badges || []).find((x) => x.pid === c.pid); return b ? `${b.title} (${b.text})` : ''; };
+  const badgeOf = (c) => (g.s.badges || []).filter((x) => x.pid === c.pid).map((b) => `${b.title} (${b.text})`).join(' / ');
   const rows = cs.map((c, i) => [i + 1, c.name, badgeOf(c), g.score(c), STAGES[c.stage].name, c.trades, c.aidGiven || 0, c.aidGot || 0, c.wars || 0, c.mgCorrect || 0, c.missionsDone || 0,
     total(c.exp), top(c.exp), total(c.imp), top(c.imp), c.tech ? 'O' : '', c.port ? 'O' : '', ...REFLECT_QS.map((_, k) => c.reflect?.[k] || '')]);
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -328,19 +328,27 @@ export function downloadCsv(g) {
 }
 
 /* ================= 🏅 칭찬 배지 (게임 끝, 선생님 화면) ================= */
+// 같은 배지를 받은 나라끼리 묶어요
+function groupBadges(bs) {
+  const m = new Map();
+  for (const b of bs) {
+    if (!m.has(b.title)) m.set(b.title, { icon: b.icon, title: b.title, who: [] });
+    m.get(b.title).who.push(b);
+  }
+  return [...m.values()];
+}
+
 export function badgesCard(g) {
   const bs = g.s.badges || [];
   if (!bs.length) return '';
   return `<div class="card badges-card">
     <div class="row wrap"><h2 class="grow" style="margin:0">🏅 칭찬 배지</h2>
       <button class="good" data-act="race">🏁 GDP 레이스 다시 보기</button></div>
-    <p class="muted">모든 나라가 하나씩 받아요. 잘한 점을 크게 칭찬해 주세요!</p>
-    <div class="badge-grid">${bs.map((b, i) => {
-      const c = g.c(b.pid); if (!c) return '';
-      return `<div class="pbadge" style="--d:${i * 0.12}s;border-color:${esc(c.color)}">
-        <div class="b-icon">${b.icon}</div><div class="b-title">${esc(b.title)}</div>
-        <div class="b-who">${flagSvg(c, 'inline')} <b>${esc(c.name)}</b></div><div class="b-text">${esc(b.text)}</div></div>`;
-    }).join('')}</div></div>`;
+    <p class="muted">조건을 채운 나라는 모두 받아요. 잘한 점을 크게 칭찬해 주세요!</p>
+    <div class="badge-grid">${groupBadges(bs).map((gb, i) => `<div class="pbadge" style="--d:${i * 0.12}s">
+        <div class="b-icon">${gb.icon}</div><div class="b-title">${esc(gb.title)}</div>
+        ${gb.who.map((b) => { const c = g.c(b.pid); return c ? `<div class="b-who">${flagSvg(c, 'inline')} <b>${esc(c.name)}</b> <span class="b-text">${esc(b.text)}</span></div>` : ''; }).join('')}
+      </div>`).join('')}</div></div>`;
 }
 
 /* ================= 🎤 라운드 하이라이트 (선생님 화면 팝업) ================= */

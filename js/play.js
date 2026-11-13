@@ -1,5 +1,5 @@
 // 학생 화면 (태블릿 세로)
-import { flagSvg, FLAG_PATTERNS, FLAG_COLORS, cleanDesign, nationColor } from './flag.js';
+import { flagSvg, FLAG_PATTERNS, FLAG_COLORS, COLOR_COUNT, cleanDesign, nationColor } from './flag.js';
 import { RES, RES_INFO, STAGES, UPGRADE_COST, WORKSHOP, FLAGS, PHASE_NAME, GOODS, GOODS_INFO, GOODS_RULE, ITEMS, ITEM_INFO } from './config.js';
 import { joinRoom, pickTransport } from './net.js';
 import { $, esc, fmtTime, toast, store, uid, icons, resChips, josa, sfx, won } from './ui.js';
@@ -36,7 +36,6 @@ const setup = {
   design: saved.design?.p ? cleanDesign(saved.design) : { p: pick(FLAG_PATTERNS).id, c: randomColors() },
 };
 // 무늬마다 쓰는 색 수
-const COLOR_COUNT = { plain: 1, h2: 2, circle: 2, cross: 2, diag: 2, h3: 3, v3: 3, tri: 3 };
 let tab = 'trade';
 const emptyRes = () => Object.fromEntries(ITEMS.map((r) => [r, 0])); // 자원 + 공산품
 let draft = { to: null, give: emptyRes(), get: emptyRes() };
@@ -318,8 +317,13 @@ function remainingMs() {
 function canTrade() { return view && (view.phase === 'trade' || view.phase === 'prep') && !view.tradeBan; }
 function canBuild() { return view && (view.phase === 'trade' || view.phase === 'prep'); }
 
+let appPhaseKey = null;
 function renderGame() {
   const v = view; const me = v.me;
+  // 미니게임 중에는 문제 화면이 다 가리고 있어요. 뒤 화면은 처음 한 번만 그려서 깜빡임을 막아요.
+  const phaseKey = `${v.phase}-${v.round}-${practice ? 'p' : 'r'}`;
+  if (v.phase === 'minigame' && appPhaseKey === phaseKey && app.firstElementChild) { renderOverlay(); return; }
+  appPhaseKey = phaseKey;
   const st = STAGES[me.stage];
   const incoming = v.offers.filter((o) => o.to === pid && o.status === 'pending');
   const phaseTxt = v.phase === 'prep' || v.phase === 'end' || v.phase === 'lobby' ? PHASE_NAME[v.phase] : `${v.round}라운드 · ${PHASE_NAME[v.phase]}`;
@@ -426,7 +430,7 @@ function renderGame() {
       }).join('')}</div>
       <div class="goodsbar ${v.features?.goods === false ? 'hidden' : ''}">
         <span class="gb-lb">🏭 공산품</span>
-        ${GOODS.map((g) => `<span class="gb-item">${GOODS_INFO[g].icon} ${GOODS_INFO[g].name} <b>${me.res[g] || 0}</b></span>`).join('')}
+        ${GOODS.filter((g) => (v.goodsOpen || GOODS).includes(g) || me.res[g] > 0).map((g) => `<span class="gb-item">${GOODS_INFO[g].icon} ${GOODS_INFO[g].name} <b>${me.res[g] || 0}</b></span>`).join('') || '<span class="muted">공장이 열리면 여기에 보여요</span>'}
         ${me.tech ? '<span class="pill tech-pill">🔬 기술 나라</span>' : ''}
       </div>
       <div class="conn muted" id="conn"></div>
@@ -476,10 +480,32 @@ function renderOverlay() {
   // 미니게임 중에는 문제 화면만 보여요 (다른 알림이 문제를 가리지 않게)
   const quiz = view?.phase === 'minigame';
   const html = (stop || (quiz ? '' : celebrateHtml() || cri || unl || wn || ann) || renderOverlayExtra?.(view) || '') + ntc;
-  if (overlay.dataset.html !== html) {
-    overlay.dataset.html = html;
-    overlay.innerHTML = html;
-  }
+  setOverlay(html);
+}
+
+// 겹쳐 뜨는 화면을 바꿀 때 깜빡이지 않게:
+// - 남은 시간 숫자만 다르면 다시 그리지 않아요 (시계는 따로 움직여요)
+// - 같은 종류의 화면이면 바깥 틀(흐린 배경)은 그대로 두고 안쪽만 바꿔요
+function setOverlay(html) {
+  const key = html.replace(/(id="mgtimer"[^>]*>)[^<]*</, '$1<');
+  if (overlay.dataset.key === key) return;
+  overlay.dataset.key = key;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const oldEls = [...overlay.children]; const newEls = [...tmp.children];
+  const same = oldEls.length && oldEls.length === newEls.length
+    && oldEls.every((el, i) => el.tagName === newEls[i].tagName && el.className === newEls[i].className);
+  if (!same) { overlay.innerHTML = html; return; }
+  oldEls.forEach((el, i) => {
+    const a = el.firstElementChild; const b = newEls[i].firstElementChild;
+    if (a && b && a.className === b.className && el.children.length === 1 && newEls[i].children.length === 1) {
+      if (a.innerHTML !== b.innerHTML) {
+        const timer = a.querySelector('#mgtimer')?.textContent;
+        a.innerHTML = b.innerHTML;
+        const t = a.querySelector('#mgtimer'); if (t && timer) t.textContent = timer;
+      }
+    } else if (el.innerHTML !== newEls[i].innerHTML) el.innerHTML = newEls[i].innerHTML;
+  });
 }
 
 /* ---------- 무역 탭 ---------- */
@@ -566,7 +592,7 @@ function tradeTab() {
   // 줄 것: 자원 5가지 + 가진 공산품만 / 받을 것: 자원 + 공산품 모두
   const goodsOn = v.features?.goods !== false;
   const giveList = ITEMS.filter((r) => RES.includes(r) || (goodsOn && (v.me.res[r] > 0 || draft.give[r] > 0)));
-  const getList = ITEMS.filter((r) => RES.includes(r) || goodsOn);
+  const getList = ITEMS.filter((r) => RES.includes(r) || (goodsOn && ((v.goodsOpen || GOODS).includes(r) || draft.get[r] > 0)));
   const allowed = mode === 'trade' ? canTrade() : canAid();
   const ready = mode === 'trade' ? giveSum && getSum : mode === 'aid' ? giveSum : getSum;
   const TITLE = { trade: counting ? '↩️ 다시 제안하기' : '✉️ 무역 제안 보내기', aid: '🎁 원조 보내기', request: '🙏 도움 요청하기' };
@@ -709,6 +735,11 @@ function factoryCard(me) {
       const need = me.tech ? info.techRecipe : info.recipe;
       const ok = RES.every((r) => (me.res[r] || 0) >= (need[r] || 0));
       const have = me.res[g] || 0;
+      // 아직 열리지 않은 공장은 잠겨 있어요
+      if (view.goodsOpen && !view.goodsOpen.includes(g)) {
+        return `<div class="good-card locked"><div class="gc-icon">🔒</div>
+          <div class="gc-name">${info.icon} ${info.name}</div><div class="muted">${info.round}라운드에 열려요</div></div>`;
+      }
       return `<div class="good-card">
         <div class="gc-icon">${info.icon}</div>
         <div class="gc-name">${info.name} <span class="muted">· 가진 것 ${have}</span></div>
@@ -892,8 +923,56 @@ setInterval(() => {
   const el = $('#ptimer');
   if (el && view) el.textContent = fmtTime(remainingMs());
   tickExtra?.();
+  updateHint();
 }, 500);
 let tickExtra = null;
+
+/* ---------- 💡 가만히 있을 때: 다음에 할 일을 작게 알려 줘요 ---------- */
+const IDLE_MS = 20000;
+let lastAct = Date.now();
+let hintEl = null;
+let hintTab = null;
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('#hint')) { lastAct = Date.now(); hideHint(); } }, true);
+
+function nextHint(v) {
+  const me = v.me;
+  const has = (cost) => Object.entries(cost || {}).every(([r, n]) => (me.res[r] || 0) >= n);
+  const next = STAGES[me.stage + 1];
+  const cost = UPGRADE_COST[me.stage + 1];
+  if (next && cost && has(cost)) return { tab: 'build', text: `🏗️ 지금 <b>${next.icon} ${josa(next.name, '으로/로')} 발전</b>할 수 있어요! 「영토·건설」 탭을 눌러 봐요` };
+  const goods = v.features?.goods ? (v.goodsOpen || []) : [];
+  const makeable = goods.find((g) => has(me.tech ? GOODS_INFO[g].techRecipe : GOODS_INFO[g].recipe));
+  if (makeable) return { tab: 'build', text: `🏭 공장에서 <b>${GOODS_INFO[makeable].icon} ${josa(GOODS_INFO[makeable].name, '을/를')}</b> 만들 수 있어요` };
+  const owned = GOODS.find((g) => me.res[g] > 0);
+  if (owned) return { tab: 'trade', text: `🚢 만든 <b>${GOODS_INFO[owned].icon} ${josa(GOODS_INFO[owned].name, '을/를')}</b> 다른 나라에 수출해 봐요 (GDP ${won(GOODS_INFO[owned].gdp, true)})` };
+  if (v.mission && !v.mission.done) return { tab: 'trade', text: `🕵️ 비밀 임무: <b>${esc(v.mission.text)}</b>` };
+  if (next && cost) {
+    const lack = RES.filter((r) => (me.res[r] || 0) < (cost[r] || 0)).map((r) => `${RES_INFO[r].icon}${cost[r] - (me.res[r] || 0)}`);
+    return { tab: 'trade', text: `💡 ${next.icon} ${next.name}까지 <b>${lack.join(' ')}</b> 더 필요해요. 「무역」으로 구해 봐요` };
+  }
+  return { tab: 'trade', text: '🤝 다른 나라에 무역을 제안해 봐요!' };
+}
+
+function hideHint() { if (hintEl) hintEl.className = ''; }
+function updateHint() {
+  const v = view;
+  const ok = v?.me && !v.unknown && screen === 'game' && (v.phase === 'trade' || v.phase === 'prep')
+    && !overlay.innerHTML.trim() && !document.getElementById('stut')?.innerHTML && Date.now() - lastAct > IDLE_MS;
+  if (!ok) { hideHint(); return; }
+  if (!hintEl) {
+    hintEl = document.createElement('div');
+    hintEl.id = 'hint';
+    document.body.appendChild(hintEl);
+    hintEl.addEventListener('click', () => {
+      lastAct = Date.now(); hideHint();
+      if (hintTab && tab !== hintTab) { tab = hintTab; render(); }
+    });
+  }
+  const h = nextHint(v);
+  hintTab = h.tab;
+  if (hintEl.dataset.t !== h.text) { hintEl.dataset.t = h.text; hintEl.innerHTML = h.text; }
+  hintEl.className = 'show';
+}
 
 /* ---------- 시작 ---------- */
 export const api = {

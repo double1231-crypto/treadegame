@@ -219,7 +219,7 @@ function countryCard(c) {
     ${c.rich.length && game.list.length <= 12 ? territorySvg({ ...c, prod: game.productionOf(c, game.s.round + 1), atWar }, { small: true }) : ''}
     ${c.rich.length ? `<div class="mini-res">${RES.map((r) => `<div class="${traitOf(c, r)}">${RES_INFO[r].icon}<br>${c.res[r]}</div>`).join('')}</div>` : ''}
     ${c.rich.length ? `<div class="goods-line">${c.tech ? '<span class="pill tech-pill">🔬 기술 나라</span>' : ''}${c.port ? '<span class="pill port-pill">⚓ 무역항</span>' : ''}
-      ${GOODS.map((gk) => `<span>${GOODS_INFO[gk].icon}${c.res[gk] || 0}</span>`).join('')}
+      ${GOODS.filter((gk) => game.goodsOpen(gk) || c.res[gk] > 0).map((gk) => `<span>${GOODS_INFO[gk].icon}${c.res[gk] || 0}</span>`).join('')}
       <span class="muted">📤${Object.values(c.exp || {}).reduce((a, n) => a + n, 0)} 📥${Object.values(c.imp || {}).reduce((a, n) => a + n, 0)}</span></div>` : ''}
     <div class="muted" style="margin-top:6px;font-size:.9rem">🤝 무역 ${c.trades}회 ${c.aidGiven ? `· 🎁 원조 ${c.aidGiven}회` : ''} ${c.wars ? `· ⚔️ 전쟁 ${c.wars}회` : ''} ${ws ? '· ' + ws : ''}</div>
     ${renderExtra?.('card', game, c) ?? ''}

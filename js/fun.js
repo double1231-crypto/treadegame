@@ -158,21 +158,25 @@ function funEnd() {
 }
 
 /* ================= 🏅 칭찬 배지 (게임 끝) ================= */
+// top: 가장 잘한 나라(동점이면 모두)가 받아요 / min: 이 기준을 넘은 나라는 모두 받아요
+// 한 나라가 여러 배지를 받을 수 있고, 하나도 못 받은 나라는 💪 끝까지 최선을 받아요.
 const BADGES = [
-  { icon: '👑', title: '1인당 GDP 1등', stat: (c) => G.score(c), text: (v) => `1인당 GDP ${won(v)}` },
-  { icon: '🤝', title: '무역왕', stat: (c) => c.trades || 0, text: (v) => `무역 ${v}번 성공` },
-  { icon: '🌐', title: '친구가 많은 나라', stat: (c) => (c.partners || []).length, text: (v) => `${v}개 나라와 무역` },
-  { icon: '😇', title: '나눔 천사', stat: (c) => c.aidGiven || 0, text: (v) => `원조 ${v}번 보냄` },
-  { icon: '🎯', title: '퀴즈 박사', stat: (c) => c.mgCorrect || 0, text: (v) => `미니게임 ${v}문제 정답` },
-  { icon: '🚢', title: '수출 대장', stat: (c) => sum(c.exp), text: (v) => `${v}개 수출` },
-  { icon: '🛍️', title: '수입 대장', stat: (c) => sum(c.imp), text: (v) => `${v}개 수입` },
-  { icon: '🏭', title: '공장장', stat: (c) => c.made || 0, text: (v) => `공산품 ${v}개 생산` },
-  { icon: '🏗️', title: '건축가', stat: (c) => (c.builds || 0) + c.stage, text: (_, c) => `${STAGES[c.stage].icon} ${STAGES[c.stage].name}까지 발전` },
-  { icon: '🕵️', title: '비밀 요원', stat: (c) => c.missionsDone || 0, text: (v) => `비밀 임무 ${v}번 성공` },
-  { icon: '🚀', title: '역전의 명수', stat: (c) => climb(c), text: (v) => `순위 ${v}계단 상승` },
-  { icon: '🕊️', title: '평화 지킴이', stat: (c) => ((c.warsDeclared || 0) ? 0 : (c.trades || 0) + (c.aidGiven || 0) * 2), text: () => '전쟁 없이 사이좋게' },
-  { icon: '⚓', title: '바다의 상인', stat: (c) => c.portFees || 0, text: (v) => `항구 수수료 ${won(v)}` },
-  { icon: '🙏', title: '도움을 잘 구한 나라', stat: (c) => c.aidGot || 0, text: (v) => `원조 ${v}번 받음` },
+  { icon: '👑', title: '1인당 GDP 1등', top: true, stat: (c) => G.score(c), text: (v) => `1인당 GDP ${won(v)}` },
+  { icon: '🤝', title: '무역왕', top: true, stat: (c) => c.trades || 0, text: (v) => `무역 ${v}번 성공` },
+  { icon: '🌐', title: '친구가 많은 나라', top: true, stat: (c) => (c.partners || []).length, text: (v) => `${v}개 나라와 무역` },
+  { icon: '🎯', title: '퀴즈 박사', top: true, stat: (c) => c.mgCorrect || 0, text: (v) => `미니게임 ${v}문제 정답` },
+  { icon: '🚢', title: '수출 대장', top: true, stat: (c) => sum(c.exp), text: (v) => `${v}개 수출` },
+  { icon: '🛍️', title: '수입 대장', top: true, stat: (c) => sum(c.imp), text: (v) => `${v}개 수입` },
+  { icon: '🏭', title: '공장장', top: true, stat: (c) => c.made || 0, text: (v) => `공산품 ${v}개 생산` },
+  { icon: '🚀', title: '역전의 명수', top: true, stat: (c) => climb(c), text: (v) => `순위 ${v}계단 상승` },
+  { icon: '⚓', title: '바다의 상인', top: true, stat: (c) => c.portFees || 0, text: (v) => `항구 수수료 ${won(v)}` },
+  { icon: '😇', title: '나눔 천사', min: 1, stat: (c) => c.aidGiven || 0, text: (v) => `원조 ${v}번 보냄` },
+  { icon: '🏰', title: '제국 건설', min: 3, stat: (c) => c.stage, text: () => `${STAGES[3].icon} 제국까지 발전` },
+  { icon: '🏗️', title: '부지런한 건축가', min: 3, stat: (c) => c.builds || 0, text: (v) => `발전·공방 ${v}번` },
+  { icon: '🕵️', title: '비밀 요원', min: 2, stat: (c) => c.missionsDone || 0, text: (v) => `비밀 임무 ${v}번 성공` },
+  { icon: '🕊️', title: '평화 지킴이', min: 3, stat: (c) => ((c.warsDeclared || 0) ? 0 : c.trades || 0), text: () => '전쟁 없이 무역으로 사이좋게' },
+  { icon: '🌏', title: '세계 시민', min: 4, stat: (c) => (c.partners || []).length, text: (v) => `${v}개 나라와 골고루 무역` },
+  { icon: '🙏', title: '도움을 잘 구한 나라', min: 2, stat: (c) => c.aidGot || 0, text: (v) => `원조 ${v}번 받음` },
 ];
 // 1라운드 끝 순위 → 마지막 순위가 몇 계단 올랐는지
 function climb(c) {
@@ -183,18 +187,22 @@ function climb(c) {
   return Math.max(0, rankAt(c, 1) - rankAt(c, last));
 }
 
-// 모든 나라가 하나씩 받아요 (같은 배지는 한 번만)
 function computeBadges() {
   const cs = G.list.filter((c) => c.approved);
   const out = [];
   const has = new Set();
   for (const b of BADGES) {
-    const cand = cs.filter((c) => !has.has(c.pid)).map((c) => ({ c, v: b.stat(c) })).filter((x) => x.v > 0)
-      .sort((x, y) => y.v - x.v);
-    if (!cand.length) continue;
-    const { c, v } = cand[0];
-    has.add(c.pid);
-    out.push({ pid: c.pid, icon: b.icon, title: b.title, text: b.text(v, c) });
+    const vals = cs.map((c) => ({ c, v: b.stat(c) }));
+    let win;
+    if (b.top) {
+      const max = Math.max(0, ...vals.map((x) => x.v));
+      win = max > 0 ? vals.filter((x) => x.v === max) : [];
+      if (win.length > Math.max(3, Math.ceil(cs.length / 2))) win = []; // 너무 많은 나라가 같으면 1등 배지는 쉬어요
+    } else win = vals.filter((x) => x.v >= b.min);
+    for (const { c, v } of win) {
+      has.add(c.pid);
+      out.push({ pid: c.pid, icon: b.icon, title: b.title, text: b.text(v, c) });
+    }
   }
   for (const c of cs) {
     if (has.has(c.pid)) continue;
@@ -202,4 +210,3 @@ function computeBadges() {
   }
   G.s.badges = out;
 }
-

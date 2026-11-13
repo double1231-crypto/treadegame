@@ -100,11 +100,22 @@ export const WAR = {
 };
 
 // 공산품: 원료를 가공해서 만드는 상품 (교과서 100~101쪽: 원료를 수입해 상품을 만들어 수출)
-export const GOODS = ['car', 'chip'];
+// round: 이 라운드부터 공장에서 만들 수 있어요 (라운드마다 새 공장이 열려요)
+export const GOODS = ['car', 'chip', 'snack', 'chair', 'ship', 'ring', 'robot'];
 export const GOODS_INFO = {
-  car:  { name: '자동차', icon: '🚗', recipe: { iron: 3, stone: 1 }, techRecipe: { iron: 2, stone: 1 }, gdp: 200 },
-  chip: { name: '반도체', icon: '💾', recipe: { gold: 2, stone: 2 }, techRecipe: { gold: 1, stone: 2 }, gdp: 250 },
+  car:   { name: '자동차', icon: '🚗', round: 2, recipe: { iron: 3, stone: 1 }, techRecipe: { iron: 2, stone: 1 }, gdp: 200 },
+  chip:  { name: '반도체', icon: '💾', round: 2, recipe: { gold: 2, stone: 2 }, techRecipe: { gold: 1, stone: 2 }, gdp: 250 },
+  snack: { name: '과자', icon: '🍪', round: 3, recipe: { food: 3, wood: 1 }, techRecipe: { food: 2, wood: 1 }, gdp: 150 },
+  chair: { name: '가구', icon: '🪑', round: 3, recipe: { wood: 3, iron: 1 }, techRecipe: { wood: 2, iron: 1 }, gdp: 180 },
+  ship:  { name: '배', icon: '🚢', round: 4, recipe: { iron: 3, wood: 2 }, techRecipe: { iron: 2, wood: 2 }, gdp: 300 },
+  ring:  { name: '장신구', icon: '💍', round: 5, recipe: { gold: 3, iron: 1 }, techRecipe: { gold: 2, iron: 1 }, gdp: 280 },
+  robot: { name: '로봇', icon: '🤖', round: 6, recipe: { iron: 2, gold: 2, stone: 1 }, techRecipe: { iron: 1, gold: 2, stone: 1 }, gdp: 350 },
 };
+// 지금 라운드에 열린 공산품인가요? (기능 하나씩 열기를 끄면 첫 공장들은 처음부터 열려요)
+export function goodsOpen(g, round, unlockOn = true) {
+  const r = GOODS_INFO[g]?.round ?? 1;
+  return round >= (unlockOn ? r : r - 1);
+}
 export const GOODS_RULE = {
   importGdp: 50,     // 공산품을 수입한 나라: 생활이 풍족해져 1개당 +50만 원
   marketGdp: 100,    // 세계 시장에 그냥 팔면 1개당 +100만 원 (다른 나라에 수출하면 위 gdp만큼)

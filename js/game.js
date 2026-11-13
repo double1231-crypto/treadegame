@@ -2,7 +2,7 @@
 import {
   RES, RES_INFO, STAGES, UPGRADE_COST, PRODUCTION, START_AMOUNT, WORKSHOP,
   TIMES, TOTAL_ROUNDS, MAX_COUNTRIES, COUNTRY_RANGE, MAX_PENDING_OFFERS, FLAGS, GDP, PEACE,
-  GOODS, GOODS_INFO, GOODS_RULE, ITEMS, ITEM_INFO, LENGTHS, FEATURE_DEFAULTS, UNLOCK, FEATURE_INFO,
+  GOODS, GOODS_INFO, GOODS_RULE, ITEMS, ITEM_INFO, LENGTHS, FEATURE_DEFAULTS, UNLOCK, FEATURE_INFO, goodsOpen,
   REFLECT_QS, TARIFF, PORT,
 } from './config.js';
 import { josa, won } from './ui.js';
@@ -283,9 +283,12 @@ export class Game {
     this.addLog('system', `📅 ${r}라운드 시작! 자원이 생산되었어요.`);
     // 이번 라운드에 새로 열린 기능 알림
     const opened = Object.keys(UNLOCK).filter((f) => this.on(f) && this.s.settings?.features?.unlock !== false && UNLOCK[f] === r);
-    if (opened.length) {
-      s.unlockMsg = { id: s.nextId++, time: Date.now(), round: r, items: opened.map((f) => ({ f, ...FEATURE_INFO[f] })) };
-      this.addLog('unlock', `🔓 새 기능이 열렸어요: ${opened.map((f) => FEATURE_INFO[f].icon + FEATURE_INFO[f].name).join(', ')}`);
+    // 이번 라운드에 새로 열린 공장 (첫 공장은 「공장」 기능 안내로 함께 알려요)
+    const newGoods = this.can('goods') ? GOODS.filter((g) => this.goodsOpen(g) && !goodsOpen(g, r - 1, this.on('unlock')) && !opened.includes('goods')) : [];
+    const items = [...opened.map((f) => ({ f, ...FEATURE_INFO[f] })), ...newGoods.map((g) => ({ f: 'good:' + g, icon: GOODS_INFO[g].icon, name: `${GOODS_INFO[g].name} 공장`, how: `「영토·건설」 탭 공장에서 ${GOODS_INFO[g].icon} ${GOODS_INFO[g].name}도 만들 수 있어요. 수출하면 1인당 GDP +${GOODS_INFO[g].gdp}만 원!` }))];
+    if (items.length) {
+      s.unlockMsg = { id: s.nextId++, time: Date.now(), round: r, items };
+      this.addLog('unlock', `🔓 새로 열렸어요: ${items.map((x) => x.icon + x.name).join(', ')}`);
     }
     if (this.can('world')) this.startWorld?.(r); // 이번 라운드의 협동 프로젝트·국제 입찰 준비
     else s.world = null;
@@ -444,6 +447,7 @@ export class Game {
   has(c, amounts) { return ITEMS.every((r) => (c.res[r] || 0) >= (amounts?.[r] || 0)); }
 
   /* ---------- 공산품 ---------- */
+  goodsOpen(g) { return goodsOpen(g, this.s.round, this.on('unlock')); }
   recipeOf(c, g) { return c.tech ? GOODS_INFO[g].techRecipe : GOODS_INFO[g].recipe; }
 
   // 원료로 공산품 만들기
@@ -451,6 +455,7 @@ export class Game {
     const c = this.c(pid);
     if (!c || !GOODS.includes(g)) return '만들 수 없는 물건이에요.';
     if (!this.can('goods')) return this.lockedMsg('goods');
+    if (!this.goodsOpen(g)) return `${GOODS_INFO[g].icon} ${GOODS_INFO[g].name} 공장은 ${GOODS_INFO[g].round}라운드에 열려요.`;
     if (!this.canBuild()) return '공장은 무역·건설 시간에 돌릴 수 있어요.';
     const need = this.recipeOf(c, g);
     if (!this.has(c, need)) return '원료가 모자라요. 다른 나라에서 수입해 보세요!';
@@ -731,6 +736,7 @@ export class Game {
       port: !!c.port,
       reflectQs: s.phase === 'end' ? REFLECT_QS : null, reflected: !!c.reflect,
       worldMsg: s.worldMsg && Date.now() - s.worldMsg.time < 15000 ? s.worldMsg : null,
+      goodsOpen: GOODS.filter((g) => this.goodsOpen(g)),
       mission: this.missionView?.(c) ?? null,
       on: Object.fromEntries(['minigame', 'mission', 'goods', 'aid', 'world', 'war', 'unlock', 'events'].map((f) => [f, this.on(f)])),
       selfTut: s.selfTut && Date.now() - s.selfTut.time < 120000 ? s.selfTut : null,

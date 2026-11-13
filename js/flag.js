@@ -1,16 +1,35 @@
 // 직사각형(3:2) 국기. 무늬 + 색 3개 + 가운데 문장(이모지)으로 만들어요.
 // 국기 정보: c.design = { p: 무늬, c: [색1, 색2, 색3] },  c.flag = 문장 이모지 ('' 이면 없음)
 
+// n: 고를 수 있는 색 개수
 export const FLAG_PATTERNS = [
-  { id: 'h3',     name: '가로 세 줄' },
-  { id: 'v3',     name: '세로 세 줄' },
-  { id: 'h2',     name: '가로 두 줄' },
-  { id: 'cross',  name: '십자' },
-  { id: 'circle', name: '가운데 원' },
-  { id: 'tri',    name: '삼각형' },
-  { id: 'diag',   name: '대각선' },
-  { id: 'plain',  name: '한 색' },
+  { id: 'h3',      name: '가로 세 줄', n: 3 },
+  { id: 'v3',      name: '세로 세 줄', n: 3 },
+  { id: 'h2',      name: '가로 두 줄', n: 2 },
+  { id: 'v2',      name: '세로 두 줄', n: 2 },
+  { id: 'h5',      name: '줄무늬', n: 2 },
+  { id: 'cross',   name: '십자', n: 2 },
+  { id: 'xcross',  name: 'X 십자', n: 2 },
+  { id: 'circle',  name: '가운데 원', n: 2 },
+  { id: 'star',    name: '가운데 별', n: 2 },
+  { id: 'crescent', name: '초승달', n: 2 },
+  { id: 'sun',     name: '햇살', n: 2 },
+  { id: 'tri',     name: '삼각형', n: 3 },
+  { id: 'diag',    name: '대각선', n: 2 },
+  { id: 'diamond', name: '마름모', n: 3 },
+  { id: 'canton',  name: '왼쪽 위 칸', n: 2 },
+  { id: 'border',  name: '테두리', n: 2 },
+  { id: 'plain',   name: '한 색', n: 1 },
 ];
+export const COLOR_COUNT = Object.fromEntries(FLAG_PATTERNS.map((p) => [p.id, p.n]));
+const starPath = (cx, cy, R, r) => {
+  let d = '';
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5; const rr = i % 2 ? r : R;
+    d += `${i ? 'L' : 'M'}${(cx + rr * Math.cos(a)).toFixed(2)} ${(cy + rr * Math.sin(a)).toFixed(2)} `;
+  }
+  return d + 'Z';
+};
 
 export const FLAG_COLORS = [
   '#d62828', '#f77f00', '#ffd23f', '#2b9348', '#1abc9c', '#1d4ed8',
@@ -46,12 +65,23 @@ export function flagShapes(c) {
     case 'circle': s = `<rect width="60" height="40" fill="${a}"/><circle cx="30" cy="20" r="11" fill="${b}"/>`; break;
     case 'tri': s = `<rect width="60" height="20" fill="${a}"/><rect y="20" width="60" height="20" fill="${k}"/><path d="M0 0 L26 20 L0 40Z" fill="${b}"/>`; break;
     case 'diag': s = `<rect width="60" height="40" fill="${a}"/><path d="M60 0 L60 40 L0 40Z" fill="${b}"/>`; break;
+    case 'v2': s = `<rect width="60" height="40" fill="${a}"/><rect x="30" width="30" height="40" fill="${b}"/>`; break;
+    case 'h5': s = `<rect width="60" height="40" fill="${a}"/>${[1, 3].map((i) => `<rect y="${i * 8}" width="60" height="8" fill="${b}"/>`).join('')}`; break;
+    case 'xcross': s = `<rect width="60" height="40" fill="${a}"/><path d="M0 0 L60 40 M60 0 L0 40" stroke="${b}" stroke-width="7"/>`; break;
+    case 'star': s = `<rect width="60" height="40" fill="${a}"/><path d="${starPath(30, 21, 13, 5.2)}" fill="${b}"/>`; break;
+    case 'crescent': s = `<rect width="60" height="40" fill="${a}"/><circle cx="26" cy="20" r="11" fill="${b}"/><circle cx="30" cy="20" r="9" fill="${a}"/><path d="${starPath(40, 20, 5, 2)}" fill="${b}"/>`; break;
+    case 'sun': s = `<rect width="60" height="40" fill="${a}"/>${Array.from({ length: 12 }, (_, i) => { const t = (i * Math.PI) / 6; return `<path d="M30 20 L${(30 + 40 * Math.cos(t - 0.12)).toFixed(1)} ${(20 + 40 * Math.sin(t - 0.12)).toFixed(1)} L${(30 + 40 * Math.cos(t + 0.12)).toFixed(1)} ${(20 + 40 * Math.sin(t + 0.12)).toFixed(1)}Z" fill="${b}" opacity=".55"/>`; }).join('')}<circle cx="30" cy="20" r="8" fill="${b}"/>`; break;
+    case 'diamond': s = `<rect width="60" height="40" fill="${a}"/><path d="M30 3 L57 20 L30 37 L3 20Z" fill="${b}"/><circle cx="30" cy="20" r="8" fill="${k}"/>`; break;
+    case 'canton': s = `<rect width="60" height="40" fill="${a}"/><rect width="26" height="20" fill="${b}"/>`; break;
+    case 'border': s = `<rect width="60" height="40" fill="${b}"/><rect x="6" y="6" width="48" height="28" fill="${a}"/>`; break;
     default: s = `<rect width="60" height="40" fill="${a}"/>`;
   }
   const emb = c.flag && c.flag !== '🏳️' ? c.flag : '';
   // 무늬마다 문장이 잘 보이는 자리
-  const ex = d.p === 'tri' ? 9 : d.p === 'cross' ? 20 : 30;
-  if (emb) s += `<text x="${ex}" y="21" font-size="${d.p === 'tri' || d.p === 'cross' ? 11 : 17}" text-anchor="middle" dominant-baseline="central">${esc(emb)}</text>`;
+  const ex = d.p === 'tri' ? 9 : d.p === 'cross' ? 20 : d.p === 'canton' ? 13 : 30;
+  const ey = d.p === 'canton' ? 10 : 21;
+  const small = ['tri', 'cross', 'canton'].includes(d.p);
+  if (emb) s += `<text x="${ex}" y="${ey}" font-size="${small ? 11 : 17}" text-anchor="middle" dominant-baseline="central">${esc(emb)}</text>`;
   return s;
 }
 

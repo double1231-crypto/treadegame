@@ -194,11 +194,12 @@ function tradeWords(me) {
 function endHtml(v) {
   const me = v.me;
   const list = [...v.countries].sort((a, b) => (b.gdp ?? 0) - (a.gdp ?? 0));
-  const myBadge = (v.badges || []).find((b) => b.pid === me.pid);
+  const myBadges = (v.badges || []).filter((b) => b.pid === me.pid);
   return `<div class="overlay"><div class="sheet center stack">
     <div style="font-size:4rem">🏁</div><h2>게임이 끝났어요!</h2>
-    ${myBadge ? `<div class="my-badge"><div class="b-icon">${myBadge.icon}</div><div class="kicker">우리 나라 칭찬 배지</div>
-      <div class="b-title">${esc(myBadge.title)}</div><div class="b-text">${esc(myBadge.text)}</div></div>` : ''}
+    ${myBadges.length ? `<div class="my-badge"><div class="kicker">우리 나라 칭찬 배지 ${myBadges.length > 1 ? `${myBadges.length}개` : ''}</div>
+      <div class="my-badge-list">${myBadges.map((b) => `<div><div class="b-icon">${b.icon}</div>
+        <div class="b-title">${esc(b.title)}</div><div class="b-text">${esc(b.text)}</div></div>`).join('')}</div></div>` : ''}
     <p style="font-size:1.4rem">${flagSvg(me, 'inline')} <b>${esc(josa(me.name, '은/는'))}</b> <b>${STAGES[me.stage].icon} ${STAGES[me.stage].name}</b>까지 발전했어요.</p>
     <p style="font-size:1.3rem">💵 우리 나라 1인당 GDP <b style="color:var(--gold)">${won((me.gdp ?? 0))}</b></p>
     <p>🤝 무역 ${me.trades}번 ${me.aidGiven ? `· 🎁 원조 ${me.aidGiven}번` : ''} ${me.wars ? `· ⚔️ 전쟁 ${me.wars}번` : ''}</p>
@@ -208,7 +209,7 @@ function endHtml(v) {
       : `<div class="reflect-form"><h3>💬 되돌아보기</h3>
         ${v.reflectQs.map((q, i) => `<label>${i + 1}. ${esc(q)}<textarea id="rf${i}" rows="2" maxlength="300" placeholder="생각을 짧게 써 봐요"></textarea></label>`).join('')}
         <button class="good" data-act="reflect" style="width:100%">📨 선생님께 보내기</button></div>`) : ''}
-    <div style="text-align:left">${list.map((c, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)">${['🥇', '🥈', '🥉'][i] || `${i + 1}.`} ${flagSvg(c, 'inline')} <b>${esc(c.name)}</b> — 💵 ${won((c.gdp ?? 0))} · ${STAGES[c.stage].icon} ${STAGES[c.stage].name}${(() => { const b = (v.badges || []).find((x) => x.pid === c.pid); return b ? ` · ${b.icon} ${esc(b.title)}` : ''; })()}</div>`).join('')}</div>
+    <div style="text-align:left">${list.map((c, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)">${['🥇', '🥈', '🥉'][i] || `${i + 1}.`} ${flagSvg(c, 'inline')} <b>${esc(c.name)}</b> — 💵 ${won((c.gdp ?? 0))} · ${STAGES[c.stage].icon} ${STAGES[c.stage].name}${(() => { const bs = (v.badges || []).filter((x) => x.pid === c.pid); return bs.length ? ` · ${bs.map((b) => b.icon).join('')}` : ''; })()}</div>`).join('')}</div>
     <p class="muted">무역으로 서로 도운 덕분에 함께 발전할 수 있었나요? 선생님 화면을 보며 이야기해 봐요.</p>
   </div></div>`;
 }

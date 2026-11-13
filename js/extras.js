@@ -101,10 +101,14 @@ function declareWar(pid, target) {
 /* ---------------- 미니게임 ---------------- */
 function normQ(q) {
   if (!q || !q.q || !Array.isArray(q.choices) || q.choices.length < 2) return null;
-  const choices = q.choices.map(String);
-  let answer = choices.indexOf(String(q.answer));
-  if (answer < 0 && Number.isInteger(q.answer) && q.answer < choices.length) answer = q.answer;
-  if (answer < 0) { console.warn('정답이 보기에 없어요:', q); return null; }
+  const orig = q.choices.map(String);
+  let ai = orig.indexOf(String(q.answer));
+  if (ai < 0 && Number.isInteger(q.answer) && q.answer < orig.length) ai = q.answer;
+  if (ai < 0) { console.warn('정답이 보기에 없어요:', q); return null; }
+  // 보기 순서를 섞어요 (정답이 늘 1번에 있지 않게). O/X 문제는 O, X 순서 그대로.
+  const isOX = orig.length === 2 && orig.every((c) => /^\s*[OXㅇ×⭕❌]/.test(c));
+  const choices = isOX ? orig : shuffle(orig);
+  const answer = choices.indexOf(orig[ai]);
   return { q: String(q.q), choices, answer, explain: q.explain ? String(q.explain) : '' };
 }
 
