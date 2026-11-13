@@ -2,6 +2,7 @@
 // 교과서 106~107쪽 「무역을 통한 세계 여러 나라의 상호 의존과 경쟁 관계」를 미리 겪어 보는 활동이에요.
 import { ITEMS, ITEM_INFO, WORLD_TASKS, PROJECTS, BIDS, BID_TECH_BONUS, PEACE } from './config.js';
 import { resText } from './game.js';
+import { won } from './ui.js';
 
 let G = null;
 const total = (obj) => ITEMS.reduce((a, r) => a + (obj?.[r] || 0), 0);
@@ -89,10 +90,10 @@ function finishProject(success) {
   if (success) {
     for (const c of people) {
       G.addGdp(c, w.gdp);
-      G.notify(c.pid, `${w.icon} 「${w.name}」 완성! 1인당 GDP +$${w.gdp}`, 'good');
+      G.notify(c.pid, `${w.icon} 「${w.name}」 완성! 1인당 GDP ${won(w.gdp, true)}`, 'good');
     }
     G.changePeace(w.peace, 'project');
-    G.addLog('world', `${w.icon} ${people.length}개 나라가 힘을 모아 완성했어요: 「${w.name}」 (참여한 나라 1인당 GDP +$${w.gdp}, 세계 평화 +${w.peace})`);
+    G.addLog('world', `${w.icon} ${people.length}개 나라가 힘을 모아 완성했어요: 「${w.name}」 (참여한 나라 1인당 GDP ${won(w.gdp, true)}, 세계 평화 +${w.peace})`);
   } else {
     // 실패하면 보탠 자원은 돌려줘요
     for (const c of people) for (const [r, n] of Object.entries(w.by[c.pid])) c.res[r] = (c.res[r] || 0) + n;
@@ -103,7 +104,7 @@ function finishProject(success) {
     id: s.nextId++, time: Date.now(), icon: w.icon, good: success,
     title: success ? `「${w.name}」 완성!` : `「${w.name}」 실패`,
     text: success
-      ? `${people.map((c) => c.flag + c.name).join(', ')} 나라가 서로 가진 것을 모아 완성했어요. 참여한 나라 모두 1인당 GDP +$${w.gdp}!`
+      ? `${people.map((c) => c.flag + c.name).join(', ')} 나라가 서로 가진 것을 모아 완성했어요. 참여한 나라 모두 1인당 GDP ${won(w.gdp, true)}!`
       : `필요한 자원이 다 모이지 않았어요. ${w.minCountries}개 나라 이상이 힘을 모아야 해요.`,
     note: '여러 나라가 서로 필요한 것을 주고받으며 함께 만들어요 → 상호 의존',
   };
@@ -155,9 +156,9 @@ function finishBid() {
   if (win) {
     w.winner = win.c.pid;
     G.addGdp(win.c, w.gdp);
-    G.notify(win.c.pid, `${w.icon} 「${w.name}」 낙찰! 공사를 맡아 1인당 GDP +$${w.gdp}`, 'good');
+    G.notify(win.c.pid, `${w.icon} 「${w.name}」 낙찰! 공사를 맡아 1인당 GDP ${won(w.gdp, true)}`, 'good');
     for (const e of entries.slice(1)) G.notify(e.c.pid, `${w.icon} 아쉽게도 ${win.c.name} 나라가 낙찰됐어요. 건 자원은 돌려받았어요.`, 'bad');
-    G.addLog('world', `${w.icon} 「${w.name}」 입찰 결과: ${entries.length}개 나라가 경쟁해 ${win.c.flag}${win.c.name} 나라가 낙찰! (1인당 GDP +$${w.gdp})`);
+    G.addLog('world', `${w.icon} 「${w.name}」 입찰 결과: ${entries.length}개 나라가 경쟁해 ${win.c.flag}${win.c.name} 나라가 낙찰! (1인당 GDP ${won(w.gdp, true)})`);
   } else {
     G.addLog('world', `${w.icon} 「${w.name}」에 입찰한 나라가 없었어요.`);
   }
@@ -166,7 +167,7 @@ function finishBid() {
     id: s.nextId++, time: Date.now(), icon: w.icon, good: !!win,
     title: win ? `「${w.name}」 입찰 결과` : `「${w.name}」 입찰 없음`,
     text: win
-      ? `${entries.length}개 나라가 경쟁해서 ${win.c.flag}${win.c.name} 나라가 공사를 맡았어요! 1인당 GDP +$${w.gdp}`
+      ? `${entries.length}개 나라가 경쟁해서 ${win.c.flag}${win.c.name} 나라가 공사를 맡았어요! 1인당 GDP ${won(w.gdp, true)}`
       : '이번에는 아무 나라도 입찰하지 않았어요.',
     note: '더 많은 이익을 얻으려고 여러 나라가 서로 겨뤄요 → 경쟁',
   };

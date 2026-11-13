@@ -64,9 +64,21 @@ async function fireHost(code, h) {
   }
   await Promise.all(['up', 'view', 'down'].map((k) => remove(child(root, k))));
 
-  // 인터넷이 잠깐 끊겼다 이어져도 다시 「선생님 있음」 표시
+  // 🧹 정리: 이 컴퓨터가 전에 쓰던 다른 방이 비어 있으면 지워요 (무료 저장 공간 아끼기)
+  try {
+    const prev = localStorage.getItem('tradeciv-fb-room');
+    if (prev && prev !== code && /^\d{4}$/.test(prev)) {
+      const old = ref(F.db, 'rooms/' + prev);
+      if (!(await get(child(old, 'host'))).exists()) await remove(old);
+    }
+    localStorage.setItem('tradeciv-fb-room', code);
+  } catch { /* 정리는 못 해도 괜찮아요 */ }
+
+  // 인터넷이 잠깐 끊겼다 이어져도 다시 「선생님 있음」 표시.
+  // 선생님 화면이 닫히면 서버가 이 방의 메시지들을 알아서 지워요.
   onValue(ref(F.db, '.info/connected'), (s) => {
     if (!s.val()) return;
+    for (const k of ['up', 'view', 'down']) onDisconnect(child(root, k)).remove();
     onDisconnect(hostRef).remove().then(() => set(hostRef, { id: me, at: serverTimestamp() }));
   });
 
@@ -103,7 +115,7 @@ async function fireHost(code, h) {
     send,
     broadcast(msg) { for (const cid of clients) send(cid, msg); },
     clients() { return [...clients]; },
-    close() { remove(hostRef); },
+    close() { remove(root); },
   };
 }
 

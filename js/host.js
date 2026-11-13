@@ -2,10 +2,11 @@
 import { flagSvg } from './flag.js';
 import { RES, RES_INFO, STAGES, PHASE_NAME, MAX_COUNTRIES, COUNTRY_RANGE, PEACE, GOODS, GOODS_INFO, ITEMS, ITEM_INFO } from './config.js';
 import { territorySvg, announceHtml, crisisHtml, newsHtml, unlockHtml } from './territory.js';
-import { settingsPanel, qrBlock, openTutorial, openTools, worldMapView, endExtras, downloadCsv } from './host-tools.js';
+import { settingsPanel, qrBlock, openTutorial, openTools, worldMapView, endExtras, downloadCsv, badgesCard, showHighlight, highlightOpen, openRace } from './host-tools.js';
 import { Game, newGameState, traitOf } from './game.js';
 import { hostRoom, pickTransport } from './net.js';
-import { $, esc, fmtTime, toast, store, icons, sfx } from './ui.js';
+import { updateMusic, mountMusicWidget } from './music.js';
+import { $, esc, fmtTime, toast, store, icons, sfx, won } from './ui.js';
 
 const SAVE_KEY = 'tradeciv-host-' + pickTransport();
 const app = $('#app');
@@ -46,6 +47,7 @@ async function boot() {
   state.freeze = false;
   lastFx = state.fx?.length ? state.fx[state.fx.length - 1].id : null;
   await initExtras?.(game);
+  mountMusicWidget();
   render();
   setInterval(() => { game.tick(); updateClock(); }, 250);
 }
@@ -113,6 +115,7 @@ function scheduleSync() {
     checkAnnounce();
     checkCrisis();
     checkWorldMsg();
+    checkHighlight();
     checkUnlock();
     checkNotice();
     checkFx();
@@ -190,13 +193,13 @@ function peaceGauge(s) {
   const tone = s.crisis ? 'crisis' : p < PEACE.recoverAt ? 'low' : 'ok';
   const lp = s.lastPeace && Date.now() - s.lastPeace.time < 4000 ? s.lastPeace : null;
   return `<div class="peace ${tone}" title="무역 +${PEACE.trade} · 원조 +${PEACE.aid} · 무역 거절/실패 ${PEACE.tradeFail} · 전쟁 ${PEACE.war} · ${PEACE.crisisBelow}점 밑이면 세계대공황">
-    <div class="peace-hd">🕊️ 세계 평화 <b>${p}</b>${lp ? `<span class="pdelta ${lp.delta > 0 ? 'up' : 'down'}">${lp.delta > 0 ? '+' : ''}${lp.delta}</span>` : ''}</div>
+    <div class="peace-hd"><span class="plabel">🕊️ 세계 평화<small>${s.crisis ? '대공황' : p < PEACE.recoverAt ? '불안해요' : p >= 80 ? '아주 평화로워요' : '평화로워요'}</small></span><b>${p}</b>${lp ? `<span class="pdelta ${lp.delta > 0 ? 'up' : 'down'}">${lp.delta > 0 ? '+' : ''}${lp.delta}</span>` : ''}</div>
     <div class="pbar"><i style="width:${p}%"></i><em style="left:${PEACE.crisisBelow}%"></em></div>
     ${s.crisis ? '<div class="pcrisis">📉 세계대공황 · 생산량 감소</div>' : ''}
   </div>`;
 }
 
-const gdpText = (c) => `$${game.score(c).toLocaleString()}`;
+const gdpText = (c) => `${won(game.score(c))}`;
 
 function countryCard(c) {
   const st = STAGES[c.stage];
@@ -207,7 +210,7 @@ function countryCard(c) {
     ${c.online ? '' : '<span class="offline pill bad">연결 끊김</span>'}
     <div class="hd">${flagSvg(c, 'cardflag')}<div><div class="nm">${esc(c.name)}</div>
       <div>${st.icon} ${st.name} ${atWar ? '<span class="war-mark">⚔️ 전쟁 중</span>' : ''}</div></div>
-      ${c.rich.length ? `<div class="gdp-chip">💵 1인당 GDP<b>${gdpText(c)}</b></div>` : ''}</div>
+      ${c.rich.length ? `<div class="gdp-chip">💵 1인당 GDP<b>${gdpText(c)}</b>${game.gdpLike ? `<span class="like">🌍 ${esc(game.gdpLike(c).name)} 수준</span>` : ''}</div>` : ''}</div>
     ${c.rich.length && game.list.length <= 12 ? territorySvg({ ...c, prod: game.productionOf(c, game.s.round + 1), atWar }, { small: true }) : ''}
     ${c.rich.length ? `<div class="mini-res">${RES.map((r) => `<div class="${traitOf(c, r)}">${RES_INFO[r].icon}<br>${c.res[r]}</div>`).join('')}</div>` : ''}
     ${c.rich.length ? `<div class="goods-line">${c.tech ? '<span class="pill tech-pill">🔬 기술 나라</span>' : ''}${c.port ? '<span class="pill port-pill">⚓ 무역항</span>' : ''}
@@ -218,20 +221,36 @@ function countryCard(c) {
   </div>`;
 }
 
+// 실시간 1인당 GDP 순위 띠 (현황판 맨 위)
+let lastRank = new Map();
+function rankStrip() {
+  const list = game.list.filter((c) => c.approved && c.rich.length).sort((a, b) => game.score(b) - game.score(a));
+  if (!list.length) return '';
+  const now = new Map(list.map((c, i) => [c.pid, i]));
+  const html = `<div class="rank-strip"><span class="rk-title">🏆 1인당 GDP 순위</span>${list.slice(0, 8).map((c, i) => {
+    const before = lastRank.get(c.pid);
+    const mv = before == null || before === i ? '' : before > i ? '<i class="up">▲</i>' : '<i class="down">▼</i>';
+    return `<span class="rk ${i < 3 ? 'top' : ''}"><em>${['🥇', '🥈', '🥉'][i] || i + 1}</em>${flagSvg(c, 'inline')}<b>${esc(c.name)}</b><span>${won(game.score(c))}</span>${mv}</span>`;
+  }).join('')}${list.length > 8 ? `<span class="muted">외 ${list.length - 8}개 나라</span>` : ''}</div>`;
+  // 순위가 바뀐 화살표는 다음 변화 때까지 보여요
+  if ([...now].some(([p, i]) => lastRank.get(p) !== i)) setTimeout(() => { lastRank = now; }, 6000);
+  return html;
+}
+
 function approvals() {
   const max = game.s.maxCountries || MAX_COUNTRIES;
   const pend = game.list.filter((c) => !c.approved);
   const ok = game.list.filter((c) => c.approved);
   return `
   <div class="card">
-    <div class="row wrap" style="margin-bottom:8px">
-      <h3 class="grow" style="margin:0">참가한 나라 (${game.list.length}/${max})</h3>
-      ${game.s.phase === 'lobby' ? `<span class="muted">나라 수</span>
+    <div class="count-hd">
+      <h3>참가한 나라 (${game.list.length}/${max})</h3>
+      ${game.s.phase === 'lobby' ? `<div class="count-ctl" title="나라 수 정하기">
       <button class="ghost small" data-act="maxdown" data-step="5" ${max <= Math.max(COUNTRY_RANGE[0], game.list.length) ? 'disabled' : ''}>−5</button>
       <button class="ghost small" data-act="maxdown" ${max <= Math.max(COUNTRY_RANGE[0], game.list.length) ? 'disabled' : ''}>−</button>
-      <b style="font-size:1.3rem;min-width:2ch;text-align:center">${max}</b>
+      <b>${max}</b>
       <button class="ghost small" data-act="maxup" ${max >= COUNTRY_RANGE[1] ? 'disabled' : ''}>＋</button>
-      <button class="ghost small" data-act="maxup" data-step="5" ${max >= COUNTRY_RANGE[1] ? 'disabled' : ''}>＋5</button>` : ''}
+      <button class="ghost small" data-act="maxup" data-step="5" ${max >= COUNTRY_RANGE[1] ? 'disabled' : ''}>＋5</button></div>` : ''}
     </div>
     ${pend.length ? `<button class="good small" data-act="approveall">모두 승인</button>` : ''}
     ${[...pend, ...ok].map((c) => `
@@ -306,14 +325,28 @@ let lastUnlock = null;
 function checkUnlock() {
   const m = game.s.unlockMsg;
   if (!m || m.id === lastUnlock) return;
+  if (highlightOpen()) return; // 하이라이트를 닫은 뒤에 보여요
   lastUnlock = m.id;
-  if (Date.now() - m.time > 20000) return;
+  if (Date.now() - m.time > 45000) return;
   annBox.className = 'overlay ann-wrap';
   annBox.innerHTML = unlockHtml(m, { big: true });
   sfx('unlock', game.on('sound'));
   clearTimeout(annTimer);
   annTimer = setTimeout(hideAnnounce, 8000);
 }
+// 🎤 라운드 하이라이트 (마지막 라운드는 결과 화면의 GDP 레이스로 대신해요)
+let lastHighlight = null;
+function checkHighlight() {
+  const h = game.s.highlight;
+  if (!h || h.id === lastHighlight) return;
+  lastHighlight = h.id;
+  if (h.last || Date.now() - h.time > 20000) return;
+  hideAnnounce();
+  showHighlight(game, h, () => { checkUnlock(); });
+}
+// 게임이 끝나면 GDP 레이스를 한 번 자동으로 보여줘요
+let raceShown = false;
+
 // 선생님 공지는 소리만 (화면에는 위쪽 띠로 보여요)
 let lastNotice = null;
 function checkNotice() {
@@ -416,6 +449,7 @@ function render() {
           ${pickTransport() === 'local' ? `<div class="banner info" style="margin:0 0 14px">🧪 <b>테스트 모드</b>예요. 같은 브라우저의 탭끼리만 연결돼요. 아래 버튼을 누를 때마다 학생 탭이 하나씩 열려요.</div>
           <a class="test-open" href="${esc(playUrl())}" target="_blank" rel="noopener">＋ 학생 탭 열기</a>` : ''}
           <div class="muted">나라 이름·국기를 정하면 오른쪽에 나타나요. 확인 후 승인해 주세요.</div>
+          ${window.__gameVersion ? `<div class="muted" style="font-size:.8rem;margin-top:8px;opacity:.7">게임 버전 ${esc(window.__gameVersion)}</div>` : ''}
         </div>
         <div class="board">${game.list.map(countryCard).join('')}</div>
       </div>
@@ -427,11 +461,13 @@ function render() {
     body = worldMapView(game);
   } else if (s.phase === 'end') {
     body = renderExtra?.('end', game) ?? `<div class="card"><h2>게임 끝!</h2></div>`;
-    body = `<div class="stack" style="margin-top:16px">${body}${endExtras(game)}<div class="board">${game.list.map(countryCard).join('')}</div>${logPanel()}</div>`;
+    if (!raceShown) { raceShown = true; setTimeout(() => openRace(game), 600); }
+    body = `<div class="stack" style="margin-top:16px">${badgesCard(game)}${body}${endExtras(game)}<div class="board">${game.list.map(countryCard).join('')}</div>${logPanel()}</div>`;
   } else {
     body = `
     <div class="host-main">
       <div class="stack">
+        ${rankStrip()}
         ${renderExtra?.('phase', game) ?? ''}
         <div class="board">${game.list.map(countryCard).join('')}</div>
       </div>
@@ -442,6 +478,7 @@ function render() {
   const strip = (s.notice && Date.now() - s.notice.time < 15000 ? `<div class="notice-strip">📢 ${esc(s.notice.text)}</div>` : '')
     + (s.freeze ? '<div class="notice-strip freeze">👀 학생 화면을 멈췄어요. 「🧰 선생님 도구」에서 다시 시작할 수 있어요.</div>' : '');
   app.innerHTML = topBar(s) + strip + body;
+  updateMusic(s);
   [...app.querySelectorAll('.loglist')].forEach((e, i) => { e.scrollTop = scrollEls[i] || 0; });
   // 영토 지도는 화면 남은 높이에 딱 맞게 (위쪽 버튼 줄 높이를 재서)
   const wall = app.querySelector('.mapwall');
@@ -462,6 +499,7 @@ app.addEventListener('click', (e) => {
     case 'addtime': game.addTime(30); break;
     case 'hostview': hostView = b.dataset.v; render(); break;
     case 'tutorial': openTutorial(game); break;
+    case 'race': openRace(game); break;
     case 'tools': openTools(game); break;
     case 'setlen': game.setSetting('length', Number(b.dataset.v)); break;
     case 'setq': game.setSetting('qset', b.dataset.v); break;

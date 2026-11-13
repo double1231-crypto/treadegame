@@ -5,12 +5,12 @@ import {
   REFLECT_QS, PEACE, GDP, WORLD_TASKS, TOTAL_ROUNDS, PORT, TARIFF,
 } from './config.js';
 import { territorySvg } from './territory.js';
-import { esc, resChips, sfx } from './ui.js';
+import { esc, resChips, sfx, won } from './ui.js';
 
 /* ================= 선생님 설정 (참가 대기 화면) ================= */
 const FEATURE_LABEL = {
   minigame: '🎯 미니게임', events: '🃏 사건 카드', goods: '🏭 공장·공산품', world: '🌐 세계 과제(프로젝트·입찰)',
-  aid: '🎁 원조·도움 요청', war: '⚔️ 전쟁', unlock: '🔓 기능 하나씩 열기', sound: '🔊 선생님 효과음', studentSound: '📱 학생 태블릿 효과음',
+  aid: '🎁 원조·도움 요청', war: '⚔️ 전쟁', mission: '🕵️ 비밀 임무', unlock: '🔓 기능 하나씩 열기', sound: '🔊 선생님 효과음', studentSound: '📱 학생 태블릿 효과음',
 };
 const minutes = (len) => {
   const t = LENGTHS[len];
@@ -106,14 +106,14 @@ function buildSlides(g) {
       <div class="swap"><div><small>내가 받을 것 (수입)</small>🌾4</div><div class="arrow">⇄</div><div><small>내가 줄 것 (수출)</small>🔩3</div></div>
       <div class="row"><button class="good grow">✅ 수락</button><button class="bad grow">❌ 거절</button></div>
       <button class="ghost counter-btn">↩️ 조건을 바꿔서 다시 제안하기</button></div>
-    <p>💡 조건이 마음에 안 들면 <b>↩️ 다시 제안</b>으로 흥정할 수 있어요. 무역에 성공하면 두 나라 모두 <b>1인당 GDP +$${GDP.trade}</b>!</p>` });
+    <p>💡 조건이 마음에 안 들면 <b>↩️ 다시 제안</b>으로 흥정할 수 있어요. 무역에 성공하면 두 나라 모두 <b>1인당 GDP ${won(GDP.trade, true)}</b>!</p>` });
   S.push({ icon: '🏗️', title: '모은 자원으로 발전하기', body: `
     <div class="tut-stages">${[0, 1, 2, 3].map((st) => `<div><div class="tut-map">${territorySvg(sample(st), { small: true })}</div><b>${STAGES[st].icon} ${STAGES[st].name}</b></div>`).join('')}</div>
     <p class="tut-lead"><b>「🗺️ 영토·건설」 탭</b>에서 필요한 자원을 다 모으면 <b>발전하기</b>를 눌러요.</p>
-    <p>발전할수록 영토가 넓어지고, <b>자원 생산</b>과 라운드마다 버는 <b>1인당 GDP</b>(마을 $${GDP.perRound[0]} → 제국 $${GDP.perRound[3]})가 늘어나요.</p>` });
+    <p>발전할수록 영토가 넓어지고, <b>자원 생산</b>과 라운드마다 버는 <b>1인당 GDP</b>(마을 ${won(GDP.perRound[0])} → 제국 ${won(GDP.perRound[3])})가 늘어나요.</p>` });
   if (g.on('goods')) S.push({ icon: '🏭', title: '공장: 원료로 공산품 만들기', body: `
     <div class="tut-goods">${GOODS.map((k) => `<div class="good-card"><div class="gc-icon">${GOODS_INFO[k].icon}</div><b>${GOODS_INFO[k].name}</b>
-      <div>${resChips(GOODS_INFO[k].recipe)} <span class="muted">(🔬 ${resChips(GOODS_INFO[k].techRecipe)})</span></div><div class="muted">수출하면 +$${GOODS_INFO[k].gdp}</div></div>`).join('')}</div>
+      <div>${resChips(GOODS_INFO[k].recipe)} <span class="muted">(🔬 ${resChips(GOODS_INFO[k].techRecipe)})</span></div><div class="muted">수출하면 ${won(GOODS_INFO[k].gdp, true)}</div></div>`).join('')}</div>
     <p class="tut-lead">원료를 가공해 만든 <b>공산품</b>을 다른 나라에 <b>수출</b>하면 1인당 GDP가 크게 올라요.</p>
     <p><b>🔬 기술 나라</b>는 원료가 덜 들어요. 자원이 부족해도 <b>원료를 수입해서 상품을 만들어 수출</b>하면 크게 성장할 수 있어요!</p>
     ${g.on('unlock') ? `<p class="muted">🔓 ${UNLOCK.goods}라운드부터 열려요.</p>` : ''}` });
@@ -131,7 +131,7 @@ function buildSlides(g) {
       <li>무역에 성공하거나 원조하면 <b>🕊️ 세계 평화 점수</b>가 올라요. 무역을 거절하거나 ${g.on('war') ? '<b>⚔️ 전쟁</b>을 하면' : ''} 내려가요.</li>
       <li>평화 점수가 <b>${PEACE.crisisBelow}점</b> 밑으로 떨어지면 <b>📉 세계대공황</b>! 모든 나라의 생산이 절반으로 줄어요.</li>
       ${g.on('war') ? '<li>⚔️ 전쟁을 하면 <b>두 나라 모두</b> 자원 40%를 잃고, 이겨도 조금밖에 못 얻어요. 정말 필요할까요?</li>' : ''}
-      ${g.on('events') ? `<li>🧱 <b>관세</b> 사건이 나오면 한 나라가 수입품에 세금을 매겨요. ⚓ <b>무역항 나라</b>는 다른 나라끼리 무역할 때마다 수수료 $${PORT.fee}를 받아요.</li>` : ''}
+      ${g.on('events') ? `<li>🧱 <b>관세</b> 사건이 나오면 한 나라가 수입품에 세금을 매겨요. ⚓ <b>무역항 나라</b>는 다른 나라끼리 무역할 때마다 수수료 ${won(PORT.fee)}을 받아요.</li>` : ''}
     </ul>` });
   if (g.on('unlock')) S.push({ icon: '🔓', title: '기능이 하나씩 열려요', body: `
     <div class="tut-flow"><div class="hl"><b>🤝 무역</b><small>준비·1라운드</small></div>
@@ -276,7 +276,7 @@ export function worldMapView(g) {
       <g transform="translate(${-r - 34} ${-r - 12}) scale(.55)">${flagShapes(c)}<rect width="60" height="40" fill="none" stroke="rgba(0,0,0,.3)"/></g>
       ${c.port ? `<text x="${r + 6}" y="${-r}" font-size="22">⚓</text>` : ''}${c.tech ? `<text x="${r + 6}" y="${-r + (c.port ? 24 : 0)}" font-size="20">🔬</text>` : ''}
       <text y="${r + 30}" font-size="20" font-weight="800" fill="#f2f5fb" text-anchor="middle">${esc(c.name)}</text>
-      <text y="${r + 52}" font-size="16" fill="#ffcf7a" text-anchor="middle">$${g.score(c).toLocaleString()}</text></g>`;
+      <text y="${r + 52}" font-size="16" fill="#ffcf7a" text-anchor="middle">${won(g.score(c))}</text></g>`;
   }).join('');
   const prices = g.prices();
   const maxRate = Math.max(1, ...prices.map((p) => p.rate));
@@ -314,8 +314,9 @@ export function downloadCsv(g) {
   const top = (book) => Object.entries(book || {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([r, n]) => `${ITEM_INFO[r].name} ${n}`).join(' / ');
   const total = (book) => Object.values(book || {}).reduce((a, n) => a + n, 0);
-  const head = ['순위', '나라', '1인당 GDP($)', '발전 단계', '무역 횟수', '원조 보냄', '원조 받음', '전쟁', '미니게임 정답', '수출 합계', '주요 수출품', '수입 합계', '주요 수입품', '기술 나라', '무역항 나라', ...REFLECT_QS.map((q, i) => `되돌아보기 ${i + 1}`)];
-  const rows = cs.map((c, i) => [i + 1, c.name, g.score(c), STAGES[c.stage].name, c.trades, c.aidGiven || 0, c.aidGot || 0, c.wars || 0, c.mgCorrect || 0,
+  const head = ['순위', '나라', '칭찬 배지', '1인당 GDP(만 원)', '발전 단계', '무역 횟수', '원조 보냄', '원조 받음', '전쟁', '미니게임 정답', '비밀 임무 성공', '수출 합계', '주요 수출품', '수입 합계', '주요 수입품', '기술 나라', '무역항 나라', ...REFLECT_QS.map((q, i) => `되돌아보기 ${i + 1}`)];
+  const badgeOf = (c) => { const b = (g.s.badges || []).find((x) => x.pid === c.pid); return b ? `${b.title} (${b.text})` : ''; };
+  const rows = cs.map((c, i) => [i + 1, c.name, badgeOf(c), g.score(c), STAGES[c.stage].name, c.trades, c.aidGiven || 0, c.aidGot || 0, c.wars || 0, c.mgCorrect || 0, c.missionsDone || 0,
     total(c.exp), top(c.exp), total(c.imp), top(c.imp), c.tech ? 'O' : '', c.port ? 'O' : '', ...REFLECT_QS.map((_, k) => c.reflect?.[k] || '')]);
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const csv = '﻿' + [head, ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
@@ -324,4 +325,94 @@ export function downloadCsv(g) {
   const d = new Date();
   a.download = `무역문명게임_결과_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ================= 🏅 칭찬 배지 (게임 끝, 선생님 화면) ================= */
+export function badgesCard(g) {
+  const bs = g.s.badges || [];
+  if (!bs.length) return '';
+  return `<div class="card badges-card">
+    <div class="row wrap"><h2 class="grow" style="margin:0">🏅 칭찬 배지</h2>
+      <button class="good" data-act="race">🏁 GDP 레이스 다시 보기</button></div>
+    <p class="muted">모든 나라가 하나씩 받아요. 잘한 점을 크게 칭찬해 주세요!</p>
+    <div class="badge-grid">${bs.map((b, i) => {
+      const c = g.c(b.pid); if (!c) return '';
+      return `<div class="badge" style="--d:${i * 0.12}s;border-color:${esc(c.color)}">
+        <div class="b-icon">${b.icon}</div><div class="b-title">${esc(b.title)}</div>
+        <div class="b-who">${flagSvg(c, 'inline')} <b>${esc(c.name)}</b></div><div class="b-text">${esc(b.text)}</div></div>`;
+    }).join('')}</div></div>`;
+}
+
+/* ================= 🎤 라운드 하이라이트 (선생님 화면 팝업) ================= */
+let hlBox = null, hlTimer = null, hlAfter = null;
+export function highlightOpen() { return !!hlBox?.innerHTML; }
+export function showHighlight(g, h, after) {
+  hlBox ||= Object.assign(document.createElement('div'), { id: 'highlight' });
+  if (!hlBox.isConnected) document.body.appendChild(hlBox);
+  hlAfter = after;
+  const who = (pids) => pids.map((p) => g.c(p)).filter(Boolean).map((c) => `<span class="hl-who">${flagSvg(c, 'inline')} ${esc(c.name)}</span>`).join('');
+  hlBox.className = 'overlay ann-wrap';
+  hlBox.innerHTML = `<div class="hl-sheet">
+    <div class="kicker">Round ${h.round} Highlight</div>
+    <h1>🎤 ${h.round}라운드 하이라이트</h1>
+    ${h.items.length ? `<div class="hl-grid">${h.items.map((it, i) => `<div class="hl-item" style="--d:${0.2 + i * 0.25}s">
+      <div class="hl-icon">${it.icon}</div><div><div class="hl-title">${esc(it.title)}</div>
+      <div class="hl-names">${who(it.pids)}</div><div class="hl-text">${esc(it.text)}</div></div></div>`).join('')}</div>`
+      : '<p style="font-size:1.4rem">이번 라운드는 조용했어요. 다음 라운드에는 무역을 더 해 볼까요? 🤝</p>'}
+    <button class="ghost" data-hl="close">닫기</button></div>`;
+  sfx('level', g.on('sound'));
+  clearTimeout(hlTimer);
+  hlTimer = setTimeout(closeHighlight, 9000 + h.items.length * 1500);
+  hlBox.onclick = (e) => { if (e.target === hlBox || e.target.closest('[data-hl=close]')) closeHighlight(); };
+}
+export function closeHighlight() {
+  if (!hlBox) return;
+  hlBox.innerHTML = ''; hlBox.className = '';
+  clearTimeout(hlTimer);
+  const f = hlAfter; hlAfter = null; f?.();
+}
+
+/* ================= 🏁 GDP 레이스 애니메이션 (게임 끝) ================= */
+export function openRace(g) {
+  const cs = g.list.filter((c) => c.approved && c.history?.length);
+  if (!cs.length) return;
+  const R = Math.max(...cs.map((c) => c.history.length - 1));
+  const val = (c, i) => { for (let k = i; k >= 0; k--) if (c.history[k] != null) return c.history[k]; return 0; };
+  const max = Math.max(1, ...cs.flatMap((c) => c.history.filter((v) => v != null)));
+  const rowH = Math.max(34, Math.min(64, Math.floor((window.innerHeight - 260) / cs.length)));
+  const box = document.getElementById('race') || Object.assign(document.createElement('div'), { id: 'race' });
+  document.body.appendChild(box);
+  box.className = 'overlay race-wrap';
+  box.innerHTML = `<div class="race-sheet">
+    <div class="row"><h1 class="grow" style="margin:0">🏁 1인당 GDP 레이스</h1><div class="race-round" id="raceRound">시작</div>
+      <button class="ghost" data-race="close">닫기</button></div>
+    <div class="race-track" style="height:${cs.length * rowH}px">${cs.map((c) => `
+      <div class="race-row" data-pid="${esc(c.pid)}" style="height:${rowH - 6}px">
+        <div class="race-name">${flagSvg(c, 'inline')} <span>${esc(c.name)}</span></div>
+        <div class="race-bar-wrap"><div class="race-bar" style="background:${esc(c.color)}"></div><b class="race-val"></b></div>
+      </div>`).join('')}</div>
+    <div class="race-foot" id="raceFoot"></div></div>`;
+  const rows = new Map([...box.querySelectorAll('.race-row')].map((el) => [el.dataset.pid, el]));
+  let i = 0, timer = null;
+  const frame = () => {
+    const order = [...cs].sort((a, b) => val(b, i) - val(a, i));
+    order.forEach((c, k) => {
+      const el = rows.get(c.pid);
+      el.style.transform = `translateY(${k * rowH}px)`;
+      el.querySelector('.race-bar').style.width = `${Math.max(2, (val(c, i) / max) * 100)}%`;
+      el.querySelector('.race-val').textContent = won(val(c, i));
+      el.classList.toggle('lead', k === 0);
+      el.querySelector('.race-name span').textContent = (k < 3 && i === R ? ['🥇 ', '🥈 ', '🥉 '][k] : '') + c.name;
+    });
+    box.querySelector('#raceRound').textContent = i === 0 ? '시작' : `${i}라운드`;
+    if (i === R) {
+      clearInterval(timer);
+      box.querySelector('#raceFoot').innerHTML = `🎉 <b>${esc(order[0].name)}</b> 나라가 1등! 모두 수고했어요!`;
+      sfx('level', g.on('sound'));
+    } else sfx('notice', false);
+    i++;
+  };
+  frame();
+  timer = setInterval(frame, 1600);
+  box.onclick = (e) => { if (e.target === box || e.target.closest('[data-race=close]')) { clearInterval(timer); box.innerHTML = ''; box.className = ''; } };
 }

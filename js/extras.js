@@ -3,8 +3,9 @@ import { flagSvg } from './flag.js';
 import { RES, RES_INFO, STAGES, WAR, GDP, PEACE } from './config.js';
 import { EVENTS } from './events.js';
 import { resText } from './game.js';
-import { esc, toast, josa } from './ui.js';
+import { esc, toast, josa, won } from './ui.js';
 import { installWorld, handleWorld } from './world.js';
+import { installFun } from './fun.js';
 import { ITEMS, ITEM_INFO, GOODS, QSETS } from './config.js';
 
 const QS = {};  // 문제 세트들 (questions*.json)
@@ -37,6 +38,7 @@ async function init(game) {
   game.warBetween = (a, b) => enemiesOf(a).includes(b.pid);
   game.enemiesOf = enemiesOf;
   installWorld(game);
+  installFun(game);
 }
 
 function handle(pid, msg) {
@@ -199,7 +201,7 @@ function finishMinigame() {
     // 1인당 GDP: 정답 수만큼 + 1등 보너스 + 협동 성공 보너스
     const gdp = (a?.correct || 0) * GDP.perCorrect + (isFirst ? GDP.firstBonus : 0) + (m.success ? GDP.coopBonus : 0);
     if (gdp) G.addGdp(c, gdp);
-    if (reward || gdp) G.notify(c.pid, `🎯 미니게임 보상: ${RES_INFO[r].icon}${RES_INFO[r].name} +${reward}${gdp ? ` · 1인당 GDP +$${gdp}` : ''}`, 'good');
+    if (reward || gdp) G.notify(c.pid, `🎯 미니게임 보상: ${RES_INFO[r].icon}${RES_INFO[r].name} +${reward}${gdp ? ` · 1인당 GDP ${won(gdp, true)}` : ''}`, 'good');
     return { pid: c.pid, correct: a?.correct || 0, n: a?.n || 0, reward, res: r, first: isFirst, gdp };
   });
   m.done = true;
@@ -274,7 +276,7 @@ function endStats(g) {
   <div class="card"><h2>📊 나라별 기록</h2>
     <table class="stats-table">
       <tr><th>순위</th><th>나라</th><th>💵 1인당 GDP</th><th>발전 단계</th><th>🤝 무역</th><th>🎁 원조(보냄/받음)</th><th>⚔️ 전쟁(선포)</th><th>🎯 정답</th></tr>
-      ${rows.map((c, i) => `<tr><td>${['🥇', '🥈', '🥉'][i] || i + 1}</td><td>${flagSvg(c, 'inline')} <b>${esc(c.name)}</b></td><td><b>$${g.score(c).toLocaleString()}</b></td>
+      ${rows.map((c, i) => `<tr><td>${['🥇', '🥈', '🥉'][i] || i + 1}</td><td>${flagSvg(c, 'inline')} <b>${esc(c.name)}</b></td><td><b>${won(g.score(c))}</b></td>
         <td>${STAGES[c.stage].icon} ${STAGES[c.stage].name}</td>
         <td>${c.trades}회</td><td>${c.aidGiven || 0} / ${c.aidGot || 0}</td><td>${c.wars}회 (${c.warsDeclared || 0})</td><td>${c.mgCorrect || 0}개</td></tr>`).join('')}
     </table>
@@ -377,10 +379,10 @@ function lineChart(cs, R) {
     const pts = c.history.map((v, i) => (v == null ? null : [x(i), y(v), v, i])).filter(Boolean);
     const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0]},${p[1]}`).join(' ');
     return `<path d="${d}" fill="none" stroke="${esc(c.color)}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-      ${pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="${esc(c.color)}" stroke="#0d1526" stroke-width="2"><title>${esc(c.name)} · ${p[3] ? p[3] + '라운드' : '시작'}: $${p[2].toLocaleString()}</title></circle>`).join('')}`;
+      ${pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="${esc(c.color)}" stroke="#0d1526" stroke-width="2"><title>${esc(c.name)} · ${p[3] ? p[3] + '라운드' : '시작'}: ${won(p[2])}</title></circle>`).join('')}`;
   }).join('');
   // 나라가 많으면 줄 끝 이름표 대신 아래 범례만 써요 (겹치지 않게)
-  const labels = cs.length > 10 ? '' : ends.map((e) => `<text x="${x(e.i) + 12}" y="${e.ly + 5}" font-size="15" font-weight="700" fill="#f2f5fb">${esc(e.c.name)} $${e.v.toLocaleString()}</text>`).join('');
+  const labels = cs.length > 10 ? '' : ends.map((e) => `<text x="${x(e.i) + 12}" y="${e.ly + 5}" font-size="15" font-weight="700" fill="#f2f5fb">${esc(e.c.name)} ${won(e.v)}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="나라별 발전 점수 그래프">${grid}${lines}${labels}</svg>`;
 }
 
@@ -443,14 +445,14 @@ function worldPanel(g, w) {
   const win = w.winner && g.c(w.winner);
   return `<div class="card world-card bid ${w.done ? 'ok' : ''}">
     <div class="row"><span class="wicon">${w.icon}</span><div class="grow"><div class="kicker">🏗️ 국제 입찰 · 경쟁</div><h2 style="margin:0">${esc(w.name)}</h2>
-    <div class="muted">${esc(w.desc)} 걸 수 있는 자원: ${w.res.map((r) => ITEM_INFO[r].icon + ITEM_INFO[r].name).join(', ')} · 낙찰되면 1인당 GDP +$${w.gdp}</div></div></div>
+    <div class="muted">${esc(w.desc)} 걸 수 있는 자원: ${w.res.map((r) => ITEM_INFO[r].icon + ITEM_INFO[r].name).join(', ')} · 낙찰되면 1인당 GDP ${won(w.gdp, true)}</div></div></div>
     <div style="margin-top:8px;font-size:1.1rem">${win ? `🏆 낙찰: ${flagSvg(win, 'inline')} <b>${esc(win.name)}</b>` : `입찰한 나라 <b>${bidders.length}</b>개 ${flags(bidders)} <span class="muted">(얼마를 걸었는지는 마감 때 공개)</span>`}</div></div>`;
 }
 
 function mgResultPanel(g, m) {
   const parts = m.results.map((r) => {
     const c = g.c(r.pid); if (!c) return '';
-    return `<span class="pill ${r.first ? 'warn' : ''}">${r.first ? '🥇' : ''}${flagSvg(c, 'inline')} ${esc(c.name)} 정답 ${r.correct} → ${RES_INFO[r.res].icon}+${r.reward}${r.gdp ? ` · $+${r.gdp}` : ''}</span>`;
+    return `<span class="pill ${r.first ? 'warn' : ''}">${r.first ? '🥇' : ''}${flagSvg(c, 'inline')} ${esc(c.name)} 정답 ${r.correct} → ${RES_INFO[r.res].icon}+${r.reward}${r.gdp ? ` · 💵${won(r.gdp, true)}` : ''}</span>`;
   }).join(' ');
   return `<div class="card"><b>${m.icon} 미니게임 결과</b> ${m.coop ? (m.success ? '<span class="pill good">협동 성공!</span>' : '<span class="pill bad">협동 실패</span>') : ''}
     <div class="row wrap" style="margin-top:8px;gap:6px">${parts}</div></div>`;

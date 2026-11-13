@@ -1,7 +1,7 @@
 // 학생 화면 확장: 미니게임, 사건 카드, 결과 화면 (이후 전쟁이 붙습니다)
 import { flagSvg } from './flag.js';
 import { RES_INFO, STAGES, ITEM_INFO } from './config.js';
-import { esc, fmtTime, resChips, josa, speak } from './ui.js';
+import { esc, fmtTime, resChips, josa, speak, won } from './ui.js';
 
 let api;
 const mg = { round: -1, idx: 0, fb: null };
@@ -162,7 +162,7 @@ function resultHtml(v, m) {
     <div style="font-size:3.5rem">${m.icon}</div>
     <h2>미니게임 결과</h2>
     ${m.coop ? `<h3>${m.success ? '🎉 협동 미션 성공! 모든 나라가 보상을 받아요.' : '😢 협동 미션 실패… 다음엔 함께 힘내요!'} (${m.total}/${m.goal})</h3>` : ''}
-    ${mine && mine.reward ? `<p style="font-size:1.4rem">맞힌 문제 <b>${mine.correct}</b>개 → <b>${RES_INFO[mine.res].icon} ${RES_INFO[mine.res].name} +${mine.reward}</b>${mine.gdp ? `<br>💵 1인당 GDP <b style="color:var(--gold)">+$${mine.gdp}</b>` : ''}</p>` : ''}
+    ${mine && mine.reward ? `<p style="font-size:1.4rem">맞힌 문제 <b>${mine.correct}</b>개 → <b>${RES_INFO[mine.res].icon} ${RES_INFO[mine.res].name} +${mine.reward}</b>${mine.gdp ? `<br>💵 1인당 GDP <b style="color:var(--gold)">${won(mine.gdp, true)}</b>` : ''}</p>` : ''}
     ${mine && !mine.reward ? '<p style="font-size:1.3rem">이번에는 문제를 풀지 않아서 보상이 없어요. 다음엔 꼭 참여해요!</p>' : ''}
     ${first ? `<p>🥇 1등: ${flagSvg(first, 'inline')} ${esc(first.name)}</p>` : ''}
     <button class="good" data-act="closeresult" data-r="${m.round}" style="width:100%;font-size:1.3rem">🤝 무역·건설 하러 가기</button>
@@ -194,10 +194,13 @@ function tradeWords(me) {
 function endHtml(v) {
   const me = v.me;
   const list = [...v.countries].sort((a, b) => (b.gdp ?? 0) - (a.gdp ?? 0));
+  const myBadge = (v.badges || []).find((b) => b.pid === me.pid);
   return `<div class="overlay"><div class="sheet center stack">
     <div style="font-size:4rem">🏁</div><h2>게임이 끝났어요!</h2>
+    ${myBadge ? `<div class="my-badge"><div class="b-icon">${myBadge.icon}</div><div class="kicker">우리 나라 칭찬 배지</div>
+      <div class="b-title">${esc(myBadge.title)}</div><div class="b-text">${esc(myBadge.text)}</div></div>` : ''}
     <p style="font-size:1.4rem">${flagSvg(me, 'inline')} <b>${esc(josa(me.name, '은/는'))}</b> <b>${STAGES[me.stage].icon} ${STAGES[me.stage].name}</b>까지 발전했어요.</p>
-    <p style="font-size:1.3rem">💵 우리 나라 1인당 GDP <b style="color:var(--gold)">$${(me.gdp ?? 0).toLocaleString()}</b></p>
+    <p style="font-size:1.3rem">💵 우리 나라 1인당 GDP <b style="color:var(--gold)">${won((me.gdp ?? 0))}</b></p>
     <p>🤝 무역 ${me.trades}번 ${me.aidGiven ? `· 🎁 원조 ${me.aidGiven}번` : ''} ${me.wars ? `· ⚔️ 전쟁 ${me.wars}번` : ''}</p>
     ${tradeWords(me)}
     ${v.reflectQs ? (v.reflected
@@ -205,7 +208,7 @@ function endHtml(v) {
       : `<div class="reflect-form"><h3>💬 되돌아보기</h3>
         ${v.reflectQs.map((q, i) => `<label>${i + 1}. ${esc(q)}<textarea id="rf${i}" rows="2" maxlength="300" placeholder="생각을 짧게 써 봐요"></textarea></label>`).join('')}
         <button class="good" data-act="reflect" style="width:100%">📨 선생님께 보내기</button></div>`) : ''}
-    <div style="text-align:left">${list.map((c, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)">${['🥇', '🥈', '🥉'][i] || `${i + 1}.`} ${flagSvg(c, 'inline')} <b>${esc(c.name)}</b> — 💵 $${(c.gdp ?? 0).toLocaleString()} · ${STAGES[c.stage].icon} ${STAGES[c.stage].name}</div>`).join('')}</div>
+    <div style="text-align:left">${list.map((c, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)">${['🥇', '🥈', '🥉'][i] || `${i + 1}.`} ${flagSvg(c, 'inline')} <b>${esc(c.name)}</b> — 💵 ${won((c.gdp ?? 0))} · ${STAGES[c.stage].icon} ${STAGES[c.stage].name}${(() => { const b = (v.badges || []).find((x) => x.pid === c.pid); return b ? ` · ${b.icon} ${esc(b.title)}` : ''; })()}</div>`).join('')}</div>
     <p class="muted">무역으로 서로 도운 덕분에 함께 발전할 수 있었나요? 선생님 화면을 보며 이야기해 봐요.</p>
   </div></div>`;
 }

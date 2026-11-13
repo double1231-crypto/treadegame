@@ -30,6 +30,15 @@ export function resChips(obj, { showZero = false } = {}) {
 
 export const icons = (list) => list.map((r) => RES_INFO[r].icon).join('');
 
+// 1인당 GDP를 원으로: 게임 숫자 1 = 1만 원. won(1000) -> '1,000만 원', won(12300) -> '1억 2,300만 원', won(150, true) -> '+150만 원'
+export function won(n, sign = false) {
+  const v = Math.round(Number(n) || 0);
+  const a = Math.abs(v);
+  const eok = Math.floor(a / 10000), man = a % 10000;
+  const body = (eok ? eok.toLocaleString() + '억' : '') + (man || !eok ? (eok ? ' ' : '') + man.toLocaleString() + '만' : '') + ' 원';
+  return (v < 0 ? '-' : sign ? '+' : '') + body;
+}
+
 // 받침에 맞는 조사 붙이기: josa('철', '이/가') -> '철이', josa('도시', '으로/로') -> '도시로'
 export function josa(word, pair) {
   const [withB, noB] = pair.split('/');
@@ -48,6 +57,13 @@ export function josa(word, pair) {
 
 // 효과음: 소리 파일 없이 브라우저에서 바로 만들어요
 let actx = null;
+let sfxHook = null;
+// 배경음악과 같은 오디오를 써요 (효과음이 날 때 음악 소리를 잠깐 줄이려고)
+export function audioCtx() {
+  try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+  return actx;
+}
+export function onSfx(fn) { sfxHook = fn; }
 const SFX = {
   trade:  [[660, 0, .12], [880, .1, .18]],
   level:  [[523, 0, .12], [659, .1, .12], [784, .2, .12], [1047, .3, .3]],
@@ -62,6 +78,7 @@ export function sfx(name, on = true) {
   try {
     actx ||= new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
+    sfxHook?.(name);
     const t0 = actx.currentTime;
     for (const [f, at, dur] of SFX[name]) {
       const o = actx.createOscillator(); const g = actx.createGain();

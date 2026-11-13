@@ -55,6 +55,7 @@ export const LENGTHS = {
 export const FEATURE_DEFAULTS = {
   minigame: true, events: true, goods: true, world: true, aid: true, war: true,
   unlock: true,     // 라운드마다 기능이 하나씩 열려요
+  mission: true,    // 🕵️ 라운드마다 나라별 비밀 임무
   sound: true,      // 선생님 화면 효과음
   studentSound: false, // 학생 태블릿 효과음
 };
@@ -104,8 +105,8 @@ export const GOODS_INFO = {
   chip: { name: '반도체', icon: '💾', recipe: { gold: 2, stone: 2 }, techRecipe: { gold: 1, stone: 2 }, gdp: 250 },
 };
 export const GOODS_RULE = {
-  importGdp: 50,     // 공산품을 수입한 나라: 생활이 풍족해져 1개당 +$50
-  marketGdp: 100,    // 세계 시장에 그냥 팔면 1개당 +$100 (다른 나라에 수출하면 위 gdp만큼)
+  importGdp: 50,     // 공산품을 수입한 나라: 생활이 풍족해져 1개당 +50만 원
+  marketGdp: 100,    // 세계 시장에 그냥 팔면 1개당 +100만 원 (다른 나라에 수출하면 위 gdp만큼)
   techShare: 1 / 3,  // 기술 나라 비율 (자원은 부족해도 공산품을 적은 원료로 만들어요)
 };
 // 자원 + 공산품 (무역할 수 있는 모든 것)
@@ -130,7 +131,7 @@ export const BIDS = [
 ];
 export const BID_TECH_BONUS = 1.2;
 
-// 1인당 GDP (달러) - 게임의 점수예요.
+// 1인당 GDP (단위: 만 원, 1000 = 1,000만 원) - 게임의 점수예요.
 export const GDP = {
   start: 1000,
   perRound: [100, 250, 450, 700], // 라운드마다 버는 GDP [마을, 도시, 왕국, 제국] - 발전할수록 많이 벌어요
@@ -139,6 +140,22 @@ export const GDP = {
   coopBonus: 100,    // 협동 미션 성공 시 모든 나라
   trade: 150,        // 무역 성공 시 두 나라 모두
 };
+
+// 🌍 우리 나라 1인당 GDP는 어느 나라와 비슷할까? (1년 기준, 2024년 무렵 대략의 값, 단위: 만 원)
+// 이 단계를 넘을 때마다 학생에게 알려 줘요. 처음(1,000만 원)은 태국과 비슷해요.
+export const GDP_COMPARE = [
+  { at: 1000, name: '태국' },
+  { at: 1400, name: '브라질' },
+  { at: 1750, name: '중국' },
+  { at: 2300, name: '칠레' },
+  { at: 3000, name: '폴란드' },
+  { at: 3900, name: '포르투갈' },
+  { at: 4500, name: '일본' },
+  { at: 5000, name: '대한민국', korea: true },
+  { at: 6400, name: '프랑스' },
+  { at: 7600, name: '독일' },
+  { at: 11800, name: '미국' },
+];
 
 // 세계 평화 점수 (0~100) - 선생님 화면에서 볼 수 있어요.
 export const PEACE = {

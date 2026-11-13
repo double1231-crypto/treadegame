@@ -5,7 +5,7 @@ import {
   GOODS, GOODS_INFO, GOODS_RULE, ITEMS, ITEM_INFO, LENGTHS, FEATURE_DEFAULTS, UNLOCK, FEATURE_INFO,
   REFLECT_QS, TARIFF, PORT,
 } from './config.js';
-import { josa } from './ui.js';
+import { josa, won } from './ui.js';
 import { cleanDesign, nationColor } from './flag.js';
 
 // 학생이 보낸 국기 정보 정리: 문장은 정해진 그림 중 하나이거나 없음, 나라 색은 국기에서 뽑아요.
@@ -80,7 +80,7 @@ export class Game {
   }
 
   /* ---------- 공통 ---------- */
-  changed() { this.hooks.onChange?.(); }
+  changed() { this.funCheck?.(); this.hooks.onChange?.(); }
   notify(pid, text, kind = 'info') { this.hooks.notify?.(pid, text, kind); }
   c(pid) { return this.s.countries[pid]; }
   get list() { return this.s.order.map((p) => this.s.countries[p]).filter(Boolean); }
@@ -242,6 +242,7 @@ export class Game {
 
   endRound() {
     const s = this.s;
+    this.funEnd?.(); // 라운드 하이라이트
     for (const c of this.list) c.history[s.round] = this.score(c);
     if (s.round >= s.totalRounds) this.finish();
     else this.startRound(s.round + 1);
@@ -251,6 +252,7 @@ export class Game {
     const s = this.s;
     this.expireOffers();
     for (const c of this.list) c.history[s.round] = this.score(c);
+    this.funBadges?.(); // 칭찬 배지
     this.addLog('system', '🏁 게임이 끝났어요!');
     this.setPhase('end');
   }
@@ -260,6 +262,7 @@ export class Game {
     s.round = r;
     s.event = null;
     this.produce();
+    this.funStart?.(r); // 비밀 임무·하이라이트 기록 시작
     this.addLog('system', `📅 ${r}라운드 시작! 자원이 생산되었어요.`);
     // 이번 라운드에 새로 열린 기능 알림
     const opened = Object.keys(UNLOCK).filter((f) => this.on(f) && this.s.settings?.features?.unlock !== false && UNLOCK[f] === r);
@@ -348,7 +351,7 @@ export class Game {
       c.lastProd = p;
       const earn = GDP.perRound[c.stage] || 0;
       this.addGdp(c, earn);
-      this.notify(c.pid, `${this.s.round}라운드 생산: ${resText(p)} · 1인당 GDP +$${earn}`, 'good');
+      this.notify(c.pid, `${this.s.round}라운드 생산: ${resText(p)} · 1인당 GDP ${won(earn, true)}`, 'good');
     }
   }
 
@@ -452,7 +455,7 @@ export class Game {
     c.res[g]--;
     this.addGdp(c, GOODS_RULE.marketGdp);
     c.marketSold = (c.marketSold || 0) + 1;
-    this.notify(pid, `🌐 세계 시장에 ${GOODS_INFO[g].icon}${josa(GOODS_INFO[g].name, '을/를')} 팔았어요. 1인당 GDP +$${GOODS_RULE.marketGdp}`, 'good');
+    this.notify(pid, `🌐 세계 시장에 ${GOODS_INFO[g].icon}${josa(GOODS_INFO[g].name, '을/를')} 팔았어요. 1인당 GDP ${won(GOODS_RULE.marketGdp, true)}`, 'good');
     this.changed();
     return null;
   }
@@ -467,15 +470,15 @@ export class Game {
       gx += n * GOODS_INFO[g].gdp;
       gm += n * GOODS_RULE.importGdp;
     }
-    if (gx) { this.addGdp(exporter, gx); this.notify(exporter.pid, `🚢 공산품 수출! 1인당 GDP +$${gx}`, 'good'); }
-    if (gm) { this.addGdp(importer, gm); this.notify(importer.pid, `📦 공산품 수입으로 생활이 풍족해졌어요. 1인당 GDP +$${gm}`, 'good'); }
+    if (gx) { this.addGdp(exporter, gx); this.notify(exporter.pid, `🚢 공산품 수출! 1인당 GDP ${won(gx, true)}`, 'good'); }
+    if (gm) { this.addGdp(importer, gm); this.notify(importer.pid, `📦 공산품 수입으로 생활이 풍족해졌어요. 1인당 GDP ${won(gm, true)}`, 'good'); }
     // 관세: 관세를 매긴 나라로 그 자원을 수출하면 파는 나라는 손해, 관세를 매긴 나라는 관세 수입
     const tf = this.s.tariff;
     if (tf && this.s.round <= tf.until && importer.pid === tf.pid && amounts?.[tf.res] > 0) {
       this.addGdp(exporter, -TARIFF.exporterLoss); this.addGdp(importer, TARIFF.importerGain);
       const nm = ITEM_INFO[tf.res];
-      this.notify(exporter.pid, `🧱 ${importer.name} 나라의 관세 때문에 ${nm.icon}${nm.name} 수출 이익이 줄었어요. 1인당 GDP -$${TARIFF.exporterLoss}`, 'bad');
-      this.notify(importer.pid, `🧱 관세 수입 +$${TARIFF.importerGain}`, 'good');
+      this.notify(exporter.pid, `🧱 ${importer.name} 나라의 관세 때문에 ${nm.icon}${nm.name} 수출 이익이 줄었어요. 1인당 GDP ${won(-(TARIFF.exporterLoss))}`, 'bad');
+      this.notify(importer.pid, `🧱 관세 수입 ${won(TARIFF.importerGain, true)}`, 'good');
     }
   }
 
@@ -601,6 +604,7 @@ export class Game {
     this.addGdp(a, GDP.trade); this.addGdp(b, GDP.trade);
     this.recordTrade(a, b, o.give); // a가 수출, b가 수입
     this.recordTrade(b, a, o.get);  // b가 수출, a가 수입
+    this.funTrade?.(a, b, o);
     // 무역항 나라는 다른 나라끼리 무역할 때마다 수수료를 받아요
     for (const p of this.list) {
       if (p.port && p !== a && p !== b) { this.addGdp(p, PORT.fee); p.portFees = (p.portFees || 0) + PORT.fee; }
@@ -609,8 +613,8 @@ export class Game {
     this.pushFx('trade', a.pid, b.pid, o.give, o.get);
     this.addLink(a.pid, b.pid, 'trade');
     this.addLog('trade', `🤝 ${a.flag}${a.name} → ${b.flag}${b.name} : ${resText(o.give)} ⇄ ${resText(o.get)}`);
-    this.notify(o.from, `🤝 ${b.name} 나라와 무역 성공! 1인당 GDP +$${GDP.trade}`, 'good');
-    this.notify(o.to, `🤝 ${a.name} 나라와 무역 성공! 1인당 GDP +$${GDP.trade}`, 'good');
+    this.notify(o.from, `🤝 ${b.name} 나라와 무역 성공! 1인당 GDP ${won(GDP.trade, true)}`, 'good');
+    this.notify(o.to, `🤝 ${a.name} 나라와 무역 성공! 1인당 GDP ${won(GDP.trade, true)}`, 'good');
     this.changed();
     return null;
   }
@@ -641,6 +645,7 @@ export class Game {
       if (!this.has(c, need)) return '자원이 모자라요. 다른 나라와 무역해 보세요!';
       for (const r of RES) c.res[r] -= need[r];
       c.stage++;
+      c.builds = (c.builds || 0) + 1;
       const st = STAGES[c.stage];
       this.addLog('build', `${st.icon} ${c.flag}${c.name} 나라가 ${josa(st.name, '으로/로')} 발전했어요!`);
       this.notify(pid, `${st.icon} ${josa(st.name, '으로/로')} 발전! 생산량이 늘어나요.`, 'good');
@@ -654,6 +659,7 @@ export class Game {
       if (!this.has(c, need)) return '자원이 모자라요.';
       for (const r of RES) c.res[r] -= need[r];
       c.workshops[res]++;
+      c.builds = (c.builds || 0) + 1;
       this.addLog('build', `🏭 ${c.flag}${c.name} 나라가 ${RES_INFO[res].icon}${RES_INFO[res].name} 공방을 지었어요.`);
       this.notify(pid, `🏭 공방 완성! ${RES_INFO[res].name} 생산 +${WORKSHOP.bonus}`, 'good');
     } else return '알 수 없는 건설이에요.';
@@ -683,7 +689,7 @@ export class Game {
       tradeBan: s.tradeBan, warBan: s.warBan,
       me: {
         ...this.pub(c), res: c.res, prod: this.productionOf(c, s.round + 1), lastProd: c.lastProd, history: c.history,
-        exp: c.exp || {}, imp: c.imp || {}, made: c.made || 0,
+        exp: c.exp || {}, imp: c.imp || {}, made: c.made || 0, like: this.gdpLike?.(c) ?? null,
         enemies: this.enemiesOf?.(c) ?? [], declaredThisRound: (s.wars || []).some((w) => w.a === pid && w.round === s.round),
       },
       countries: this.list.filter((x) => x.approved).map((x) => this.pub(x)),
@@ -708,6 +714,8 @@ export class Game {
       port: !!c.port,
       reflectQs: s.phase === 'end' ? REFLECT_QS : null, reflected: !!c.reflect,
       worldMsg: s.worldMsg && Date.now() - s.worldMsg.time < 15000 ? s.worldMsg : null,
+      mission: this.missionView?.(c) ?? null,
+      badges: s.phase === 'end' ? s.badges || null : null,
     };
   }
 }

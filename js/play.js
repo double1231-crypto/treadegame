@@ -2,7 +2,7 @@
 import { flagSvg, FLAG_PATTERNS, FLAG_COLORS, cleanDesign, nationColor } from './flag.js';
 import { RES, RES_INFO, STAGES, UPGRADE_COST, WORKSHOP, FLAGS, PHASE_NAME, GOODS, GOODS_INFO, GOODS_RULE, ITEMS, ITEM_INFO } from './config.js';
 import { joinRoom, pickTransport } from './net.js';
-import { $, esc, fmtTime, toast, store, uid, icons, resChips, josa, sfx } from './ui.js';
+import { $, esc, fmtTime, toast, store, uid, icons, resChips, josa, sfx, won } from './ui.js';
 import { territorySvg, facilityLegend, announceHtml, crisisHtml, newsHtml, unlockHtml } from './territory.js';
 
 const app = $('#app');
@@ -310,7 +310,8 @@ function renderGame() {
       <div class="mybar" style="--nation:${esc(me.color)}">
         ${flagSvg(me, 'bar')}
         <div><div class="name">${esc(me.name)}</div><div class="stage">${st.icon} ${st.name}</div>
-          <div class="my-gdp">💵 1인당 GDP <b>$${(me.gdp ?? 0).toLocaleString()}</b></div></div>
+          <div class="my-gdp">💵 1인당 GDP <b>${won((me.gdp ?? 0))}</b></div>
+          ${me.like ? `<div class="gdp-like">🌍 ${me.like.korea ? '대한민국(우리나라)과' : esc(josa(me.like.name, '과/와'))} 비슷해요${me.like.next ? ` <span>· 다음: ${esc(me.like.next.name)} ${won(me.like.next.at)}</span>` : ' 🏆'}</div>` : ''}</div>
         <div class="timer"><span>${phaseTxt}</span><b id="ptimer">${fmtTime(remainingMs())}</b></div>
       </div>
       <div class="resgrid">${RES.map((r) => {
@@ -440,7 +441,7 @@ function stepper(side, r) {
   const target = countryOf(draft.to);
   const isGood = GOODS.includes(r);
   let hint = '';
-  if (side === 'give') hint = `가진 것 ${have}개${isGood ? ` · 수출하면 +$${GOODS_INFO[r].gdp}` : ''}`;
+  if (side === 'give') hint = `가진 것 ${have}개${isGood ? ` · 수출하면 ${won(GOODS_INFO[r].gdp, true)}` : ''}`;
   else if (isGood) hint = '공산품이에요';
   else if (target) hint = target.rich.includes(r) ? '이 나라에 많아요 👍' : target.poor.includes(r) ? '이 나라에 부족해요' : '';
   return `<div class="stepper ${isGood ? 'good-row' : ''}">
@@ -478,6 +479,7 @@ function tradeTab() {
   const SEND = { trade: counting ? '↩️ 다시 제안 보내기' : '📨 제안 보내기', aid: '🎁 원조 보내기', request: '🙏 도움 요청 보내기' };
 
   return `<div class="stack">
+    ${missionCard(v.mission)}
     ${worldCard(v.world)}
     ${incoming.length ? `<h2>📩 받은 제안 ${incoming.length}개</h2>${incoming.map((o) => offerCard(o, true)).join('')}` : ''}
     <div class="card stack ${counting ? 'counter-form' : ''} mode-${mode}" id="tradeform">
@@ -540,6 +542,19 @@ function wstepper(r, max) {
   </div>`;
 }
 
+// 🕵️ 비밀 임무 (우리 나라만 보여요)
+function missionCard(m) {
+  if (!m) return '';
+  const pct = Math.round((m.now / m.goal) * 100);
+  const nowTxt = m.money ? `${won(m.now)} / ${won(m.goal)}` : `${m.now} / ${m.goal}`;
+  return `<div class="card mission-card ${m.done ? 'done' : ''}">
+    <div class="m-hd"><span class="m-tag">🕵️ 비밀 임무</span><span class="muted">다른 나라에는 비밀!</span></div>
+    <div class="m-body"><span class="m-icon">${m.icon}</span><b>${esc(m.text)}</b></div>
+    <div class="m-bar"><i style="width:${pct}%"></i></div>
+    <div class="m-foot">${m.done ? `✅ 성공! 1인당 GDP ${won(m.reward, true)}` : `${nowTxt} · 성공하면 1인당 GDP ${won(m.reward, true)}`}</div>
+  </div>`;
+}
+
 function worldCard(w) {
   if (!w) return '';
   if (wdraftId !== w.id) { wdraftId = w.id; wdraft = {}; wOpen = false; }
@@ -564,7 +579,7 @@ function worldCard(w) {
         const pct = Math.min(100, Math.round((w.got[r] / w.need[r]) * 100));
         return `<div class="wneed"><span>${ITEM_INFO[r].icon} ${ITEM_INFO[r].name}</span><div class="bar"><div style="width:${pct}%"></div></div><b>${w.got[r]}/${w.need[r]}</b></div>`;
       }).join('')}</div>
-      <div class="muted" style="margin:6px 0">참여한 나라 ${w.helpers.length}/${w.minCountries} ${flags(w.helpers)} · 완성하면 참여한 나라 모두 1인당 GDP +$${w.gdp} · 한 나라는 ${w.cap}개까지 (우리 나라 ${mineTotal}개 보탬)</div>
+      <div class="muted" style="margin:6px 0">참여한 나라 ${w.helpers.length}/${w.minCountries} ${flags(w.helpers)} · 완성하면 참여한 나라 모두 1인당 GDP ${won(w.gdp, true)} · 한 나라는 ${w.cap}개까지 (우리 나라 ${mineTotal}개 보탬)</div>
       ${open ? (room ? `<button class="ghost wtoggle" data-act="wtoggle">${wOpen ? '▲ 접기' : '➕ 우리 나라 자원 보태기'}</button>
         ${wOpen ? `<div class="wform"><div class="stepper-list">${rows}</div>
         <button class="good" style="width:100%;margin-top:8px" data-act="contribute" ${sumDraft ? '' : 'disabled'}>🤝 보태기</button>
@@ -578,7 +593,7 @@ function worldCard(w) {
   return `<div class="card world-card bid ${w.done ? 'ok' : ''}">
     <div class="row"><span class="wicon">${w.icon}</span><div class="grow">
       <div class="kicker">🏗️ 국제 입찰 · 서로 겨뤄요</div><h2 style="margin:0">${esc(w.name)}</h2></div></div>
-    <p style="margin:8px 0">${esc(w.desc)} 낙찰되면 1인당 GDP <b>+$${w.gdp}</b>!</p>
+    <p style="margin:8px 0">${esc(w.desc)} 낙찰되면 1인당 GDP <b>${won(w.gdp, true)}</b>!</p>
     <div class="muted">입찰한 나라 ${w.count}개 · 얼마를 걸었는지는 마감 때 공개돼요. 진 나라는 건 자원을 돌려받아요.${me.tech ? ' 우리는 🔬 기술 나라라서 점수가 ' + w.techBonus + '배!' : ''}</div>
     ${w.done ? `<div class="banner ${win && w.winner === pid ? 'info' : 'warn'}" style="margin-top:8px">${win ? `🏆 낙찰: ${flagSvg(win, 'inline')} <b>${esc(win.name)}</b>` : '입찰한 나라가 없었어요.'}</div>`
       : w.mine ? `<div class="banner info" style="margin-top:8px">✅ 입찰했어요: <b>${resChips(w.mine)}</b>
@@ -604,7 +619,7 @@ function factoryCard(me) {
         <div class="gc-icon">${info.icon}</div>
         <div class="gc-name">${info.name} <span class="muted">· 가진 것 ${have}</span></div>
         ${costHtml(need)}
-        <div class="muted gc-val">수출 +$${info.gdp} · 세계 시장 +$${GOODS_RULE.marketGdp}</div>
+        <div class="muted gc-val">수출 ${won(info.gdp, true)} · 세계 시장 ${won(GOODS_RULE.marketGdp, true)}</div>
         <button class="good" data-act="make" data-g="${g}" ${ok && canBuild() ? '' : 'disabled'}>🏭 만들기</button>
         <button class="ghost small" data-act="sell" data-g="${g}" ${have && canBuild() ? '' : 'disabled'}>🌐 세계 시장에 팔기</button>
       </div>`;
@@ -687,7 +702,7 @@ function nationsTab() {
         <div class="nm">${flagSvg(c, 'inline')} ${esc(c.name)} ${c.pid === pid ? '<span class="pill">우리 나라</span>' : ''} ${c.tech ? '<span class="pill tech-pill">🔬 기술</span>' : ''} ${c.port ? '<span class="pill port-pill">⚓ 무역항</span>' : ''} ${c.online ? '' : '<span class="pill">연결 끊김</span>'}</div>
         <div>${STAGES[c.stage].icon} ${STAGES[c.stage].name} ${c.atWar ? '<span class="war-mark">⚔️ 전쟁 중</span>' : ''}</div>
         <div>많은 자원 <b>${icons(c.rich) || '-'}</b> · 부족한 자원 <b>${icons(c.poor) || '-'}</b></div>
-        <div>💵 1인당 GDP <b>$${(c.gdp ?? 0).toLocaleString()}</b>${c.aidGiven ? ` · 🎁 원조 ${c.aidGiven}회` : ''}</div>
+        <div>💵 1인당 GDP <b>${won((c.gdp ?? 0))}</b>${c.aidGiven ? ` · 🎁 원조 ${c.aidGiven}회` : ''}</div>
       </div>
     </div>`).join('')}
     ${view.news?.length ? `<div class="card"><h3>📰 소식</h3>${view.news.slice().reverse().map((n) => `<div style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(n.text)}</div>`).join('')}</div>` : ''}
