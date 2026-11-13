@@ -28,6 +28,29 @@ if (!/^https?:$/.test(location.protocol)) {
     '</div></div>';
 }
   </script>
-  <script type="module" src="js/play.js"></script>
+  <script data-main="js/play.js">
+// 자동 업데이트: version.json(항상 새로 받아요)의 버전 번호를 파일 주소에 붙여서, 고친 파일을 바로 받게 해요.
+(function () {
+  if (!/^https?:$/.test(location.protocol)) return;
+  var main = document.currentScript.getAttribute('data-main');
+  function go(v, files) {
+    if (v) {
+      window.__gameVersion = v;
+      var map = { imports: {} };
+      (files || []).forEach(function (f) { map.imports[new URL(f, location.href).href] = new URL(f + '?v=' + encodeURIComponent(v), location.href).href; });
+      var im = document.createElement('script'); im.type = 'importmap'; im.textContent = JSON.stringify(map);
+      document.head.appendChild(im);
+      var css = document.querySelector('link[href="css/style.css"]');
+      if (css) css.href = 'css/style.css?v=' + encodeURIComponent(v);
+    }
+    var s = document.createElement('script'); s.type = 'module';
+    s.src = main + (v ? '?v=' + encodeURIComponent(v) : '');
+    document.body.appendChild(s);
+  }
+  fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { go(j.v, j.files); }, function () { go(null); });
+})();
+  </script>
 </body>
 </html>
