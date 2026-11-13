@@ -718,3 +718,7 @@ body.practicing #app { padding-bottom: 46vh; }
 #coach.min .coach-body, #coach.min .coach-foot { display: none; }
 #coach.min { max-height: none; }
 .st-practice { width: 100%; min-height: 64px; font-size: 1.3rem; margin: 6px 0; }
+/* ---------- 📌 튜토리얼 완료 띠 ---------- */
+.banner.good { background: rgba(60, 200, 120, .14); color: #c8f5da; border-color: rgba(60, 200, 120, .4); }
+.tut-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: center; text-align: center; }
+.tut-banner button { min-height: 44px; }
